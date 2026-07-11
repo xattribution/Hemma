@@ -1,0 +1,56 @@
+@import "tailwindcss";
+
+@theme {
+  --color-cream: #fdf8f0;
+  --color-card: #ffffff;
+  --color-ink: #3a3330;
+  --color-ink-soft: #7a6f68;
+  --color-coral: #e05d5d;
+  --color-coral-soft: #fbe9e4;
+  --color-sun: #f2b134;
+  --color-leaf: #5aa832;
+  --color-sky: #3d87c9;
+  --color-line: #efe5d8;
+
+  --font-sans: "Nunito", ui-rounded, "Hiragino Maru Gothic ProN", "Quicksand",
+    "Comfortaa", "Arial Rounded MT Bold", system-ui, sans-serif;
+
+  --radius-card: 1.25rem;
+
+  --shadow-card: 0 2px 10px rgb(90 70 50 / 0.08);
+}
+
+html {
+  background: var(--color-cream);
+  color: var(--color-ink);
+  font-family: var(--font-sans);
+  -webkit-tap-highlight-color: transparent;
+}
+
+body {
+  margin: 0;
+  min-height: 100dvh;
+}
+
+/* Cozy, family-friendly defaults */
+button {
+  cursor: pointer;
+  touch-action: manipulation;
+}
+
+::selection {
+  background: var(--color-coral-soft);
+}
+
+@keyframes pop {
+  0% { transform: scale(0.9); }
+  60% { transform: scale(1.08); }
+  100% { transform: scale(1); }
+}
+.animate-pop { animation: pop 0.25s ease-out; }
+
+@keyframes slide-up {
+  from { transform: translateY(12px); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
+}
+.animate-slide-up { animation: slide-up 0.2s ease-out; }

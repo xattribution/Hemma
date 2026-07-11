@@ -1,0 +1,23 @@
+{
+  "name": "coord",
+  "private": true,
+  "version": "0.1.0",
+  "description": "Coord — a self-hosted family coordination calendar",
+  "type": "module",
+  "scripts": {
+    "dev": "pnpm --parallel --filter @coord/server --filter @coord/web dev",
+    "build": "pnpm --filter @coord/web build",
+    "seed": "pnpm --filter @coord/server seed",
+    "test": "pnpm --filter @coord/server test",
+    "typecheck": "pnpm -r typecheck"
+  },
+  "engines": {
+    "node": ">=22"
+  },
+  "pnpm": {
+    "onlyBuiltDependencies": [
+      "better-sqlite3",
+      "esbuild"
+    ]
+  }
+}

@@ -1,0 +1,219 @@
+import { z } from "zod";
+import { deviceCan, taskInputSchema, type Task } from "@coord/shared";
+import type { EventBus } from "@coord/plugin-sdk";
+import type { CoreModule } from "../core/plugin-host.js";
+import { requireCan, requireMember, requireSession, type MemberRow } from "../core/auth.js";
+import { actorOf } from "../core/actor.js";
+import { parse } from "../core/http.js";
+import type { Db } from "../core/db.js";
+import { now, uid } from "../core/db.js";
+import { recordAudit } from "../core/audit.js";
+import { getHousehold } from "../core/household.js";
+import { isoDateOf, utcOfWall } from "../core/tz.js";
+
+interface TaskRow {
+  id: string;
+  household_id: string;
+  title: string;
+  notes: string;
+  icon: string;
+  kind: "chore" | "todo";
+  assignee_id: string | null;
+  due_at: number | null;
+  repeat: string | null;
+  points: number | null;
+  created_by: string | null;
+}
+
+/** Does a repeat pattern ("daily" | "weekdays" | "0,3,5") land on this weekday (0=Sun)? */
+export function repeatsOn(repeat: string, weekday: number): boolean {
+  if (repeat === "daily") return true;
+  if (repeat === "weekdays") return weekday >= 1 && weekday <= 5;
+  return repeat
+    .split(",")
+    .map((s) => Number.parseInt(s.trim(), 10))
+    .includes(weekday);
+}
+
+/** List tasks as they stand for a given household-local date. */
+export function listTasksFor(db: Db, householdId: string, isoDate: string, tz: string): Task[] {
+  const [y, m, d] = isoDate.split("-").map(Number);
+  const noonUtc = utcOfWall({ year: y!, month: m! - 1, day: d!, hour: 12, minute: 0, second: 0 }, tz);
+  const weekday = new Date(noonUtc).getUTCDay(); // noon avoids DST edge ambiguity
+  const rows = db
+    .prepare("SELECT * FROM tasks WHERE household_id = ? AND deleted_at IS NULL ORDER BY created_at")
+    .all(householdId) as TaskRow[];
+
+  const tasks: Task[] = [];
+  for (const row of rows) {
+    const recurring = row.repeat !== null;
+    if (recurring && !repeatsOn(row.repeat!, weekday)) continue;
+    const occurrenceKey = recurring ? isoDate : "";
+    const completion = db
+      .prepare("SELECT completed_by, completed_at FROM task_completions WHERE task_id = ? AND occurrence_date = ?")
+      .get(row.id, occurrenceKey) as { completed_by: string | null; completed_at: number } | undefined;
+    tasks.push({
+      id: row.id,
+      title: row.title,
+      notes: row.notes,
+      icon: row.icon,
+      kind: row.kind,
+      assigneeId: row.assignee_id,
+      dueAt: row.due_at,
+      repeat: row.repeat,
+      points: row.points,
+      createdBy: row.created_by,
+      occurrenceDate: recurring ? isoDate : null,
+      dueToday: recurring ? true : row.due_at === null || isoDateOf(row.due_at, tz) <= isoDate,
+      completed: !!completion,
+      completedBy: completion?.completed_by ?? null,
+      completedAt: completion?.completed_at ?? null,
+    });
+  }
+  return tasks;
+}
+
+export function completeTask(
+  db: Db, bus: EventBus, householdId: string,
+  actor: { memberId: string | null; name: string },
+  taskId: string, occurrenceDate: string | null,
+): { completed: boolean } {
+  const row = db
+    .prepare("SELECT * FROM tasks WHERE id = ? AND household_id = ? AND deleted_at IS NULL")
+    .get(taskId, householdId) as TaskRow | undefined;
+  if (!row) throw Object.assign(new Error("Task not found"), { statusCode: 404 });
+  const key = row.repeat !== null ? (occurrenceDate ?? "") : "";
+  if (row.repeat !== null && !key) {
+    throw Object.assign(new Error("occurrenceDate required for recurring chores"), { statusCode: 400 });
+  }
+  const existing = db
+    .prepare("SELECT 1 FROM task_completions WHERE task_id = ? AND occurrence_date = ?")
+    .get(taskId, key);
+  if (existing) {
+    db.prepare("DELETE FROM task_completions WHERE task_id = ? AND occurrence_date = ?").run(taskId, key);
+    recordAudit(db, householdId, actor, "task", taskId, "uncomplete", `${actor.name} unchecked "${row.title}"`);
+  } else {
+    db.prepare(
+      "INSERT INTO task_completions (task_id, occurrence_date, completed_by, completed_at) VALUES (?, ?, ?, ?)",
+    ).run(taskId, key, actor.memberId, now());
+    recordAudit(db, householdId, actor, "task", taskId, "complete", `${actor.name} completed "${row.title}" 🎉`);
+  }
+  bus.emit("task.completed", { taskId, title: row.title, occurrenceDate: key || null, actor });
+  return { completed: !existing };
+}
+
+export const tasksModule: CoreModule = {
+  id: "core.tasks",
+  name: "Chores & to-dos",
+  description: "Kids' chores and family to-dos with completion and swapping.",
+  register({ app, db, bus }) {
+    app.get("/api/tasks", (req, reply) => {
+      if (!requireSession(db, req, reply)) return;
+      const household = getHousehold(db)!;
+      const query = parse(z.object({ date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional() }), req.query, reply);
+      if (!query) return;
+      const isoDate = query.date ?? isoDateOf(now(), household.timezone);
+      return { date: isoDate, tasks: listTasksFor(db, household.id, isoDate, household.timezone) };
+    });
+
+    app.post("/api/tasks", (req, reply) => {
+      const member = requireCan(db, req, reply, "task.manage");
+      if (!member) return;
+      const input = parse(taskInputSchema, req.body, reply);
+      if (!input) return;
+      const id = uid();
+      db.prepare(
+        `INSERT INTO tasks (id, household_id, title, notes, icon, kind, assignee_id, due_at, repeat, points, created_by, created_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      ).run(id, member.household_id, input.title, input.notes, input.icon, input.kind,
+        input.assigneeId, input.dueAt, input.repeat, input.points, member.id, now());
+      recordAudit(db, member.household_id, actorOf(member), "task", id, "create", `${member.name} added "${input.title}"`);
+      bus.emit("task.created", { taskId: id, title: input.title, actor: actorOf(member) });
+      reply.code(201);
+      return { id };
+    });
+
+    app.patch("/api/tasks/:id", (req, reply) => {
+      const member = requireCan(db, req, reply, "task.manage");
+      if (!member) return;
+      const patch = parse(taskInputSchema.partial(), req.body, reply);
+      if (!patch) return;
+      const { id } = req.params as { id: string };
+      const row = db.prepare("SELECT * FROM tasks WHERE id = ? AND deleted_at IS NULL").get(id) as TaskRow | undefined;
+      if (!row) {
+        reply.code(404).send({ error: "Task not found" });
+        return;
+      }
+      db.prepare(
+        "UPDATE tasks SET title = ?, notes = ?, icon = ?, kind = ?, assignee_id = ?, due_at = ?, repeat = ?, points = ? WHERE id = ?",
+      ).run(
+        patch.title ?? row.title, patch.notes ?? row.notes, patch.icon ?? row.icon, patch.kind ?? row.kind,
+        patch.assigneeId !== undefined ? patch.assigneeId : row.assignee_id,
+        patch.dueAt !== undefined ? patch.dueAt : row.due_at,
+        patch.repeat !== undefined ? patch.repeat : row.repeat,
+        patch.points !== undefined ? patch.points : row.points,
+        id,
+      );
+      recordAudit(db, member.household_id, actorOf(member), "task", id, "update",
+        `${member.name} updated "${patch.title ?? row.title}"`);
+      bus.emit("task.created", { taskId: id, title: patch.title ?? row.title, actor: actorOf(member) });
+      return { ok: true };
+    });
+
+    app.delete("/api/tasks/:id", (req, reply) => {
+      const member = requireCan(db, req, reply, "task.manage");
+      if (!member) return;
+      const { id } = req.params as { id: string };
+      const row = db.prepare("SELECT title FROM tasks WHERE id = ? AND deleted_at IS NULL").get(id) as { title: string } | undefined;
+      if (!row) {
+        reply.code(404).send({ error: "Task not found" });
+        return;
+      }
+      db.prepare("UPDATE tasks SET deleted_at = ? WHERE id = ?").run(now(), id);
+      db.prepare("DELETE FROM reminders WHERE entity_type = 'task' AND entity_id = ?").run(id);
+      recordAudit(db, member.household_id, actorOf(member), "task", id, "delete", `${member.name} removed "${row.title}"`);
+      bus.emit("task.created", { taskId: id, title: row.title, actor: actorOf(member) });
+      return { ok: true };
+    });
+
+    // Anyone in the family — including the kitchen display — can check off a chore.
+    app.post("/api/tasks/:id/complete", (req, reply) => {
+      const session = requireSession(db, req, reply);
+      if (!session) return;
+      if (session.kind === "device" && !deviceCan("task.complete")) {
+        reply.code(403).send({ error: "This display can't do that" });
+        return;
+      }
+      const body = parse(z.object({ occurrenceDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).nullable().default(null) }), req.body ?? {}, reply);
+      if (!body) return;
+      const household = getHousehold(db)!;
+      return completeTask(db, bus, household.id, actorOf(session), (req.params as { id: string }).id, body.occurrenceDate);
+    });
+
+    // Kids can swap chores between themselves — "super simple reassigning".
+    app.post("/api/tasks/:id/reassign", (req, reply) => {
+      const member = requireMember(db, req, reply);
+      if (!member) return;
+      const body = parse(z.object({ toMemberId: z.string().nullable() }), req.body, reply);
+      if (!body) return;
+      const { id } = req.params as { id: string };
+      const row = db.prepare("SELECT * FROM tasks WHERE id = ? AND deleted_at IS NULL").get(id) as TaskRow | undefined;
+      if (!row) {
+        reply.code(404).send({ error: "Task not found" });
+        return;
+      }
+      const target = body.toMemberId
+        ? (db.prepare("SELECT name FROM members WHERE id = ? AND deleted_at IS NULL").get(body.toMemberId) as { name: string } | undefined)
+        : null;
+      if (body.toMemberId && !target) {
+        reply.code(400).send({ error: "Unknown family member" });
+        return;
+      }
+      db.prepare("UPDATE tasks SET assignee_id = ? WHERE id = ?").run(body.toMemberId, id);
+      recordAudit(db, member.household_id, actorOf(member), "task", id, "reassign",
+        target ? `${member.name} handed "${row.title}" to ${target.name}` : `${member.name} unassigned "${row.title}"`);
+      bus.emit("task.reassigned", { taskId: id, title: row.title, toMemberId: body.toMemberId ?? "", actor: actorOf(member) });
+      return { ok: true };
+    });
+  },
+};

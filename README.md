@@ -1,0 +1,144 @@
+# 🏡 Coord — the family coordination calendar
+
+A self-hosted, family-friendly hub that organizes your family's life: a classic
+light-mode calendar, kids' chores with points and swapping, shared shopping
+lists, reminders, and an always-on kitchen-tablet dashboard — all syncing in
+real time to every phone, tablet and browser in the house.
+
+Your data lives on **your** server (a NAS, mini-PC or Raspberry-class box).
+One codebase, every platform: Coord is a PWA, so it installs to the home
+screen on iPhone and Android alike and runs full-screen on a kitchen display.
+
+![Coord](apps/web/public/icons/icon-192.png)
+
+## What's inside (Phase 1)
+
+- **Calendar** — month / week / day views, recurring events (RFC-5545 RRULE),
+  "just this one / this and following / whole series" edits, per-member colors,
+  categories, DST-safe timezone handling
+- **Family & roles** — parents sign in with a password, kids with a big-button
+  4-digit PIN from an avatar picker; parents manage, kids do
+- **Chores & to-dos** — daily/weekday/weekend repeats, points, tap-to-complete,
+  and one-tap **swap** ("you take dishes, I'll walk the dog")
+- **Lists** — shared shopping/packing lists with quantities ("Milk x2"),
+  live check-off from any device, pin to the dashboard
+- **Reminders** — server-side scheduler with web-push notifications
+  (iOS ≥ 16.4 installed PWA, Android, desktop) plus in-app toasts
+- **Kitchen dashboard** — kiosk mode for a wall tablet: today + tomorrow,
+  each kid's chores (tappable), pinned lists, a big clock; signs in once with
+  a display token and survives weeks unattended
+- **History** — a searchable "what's been happening" feed (who completed,
+  swapped, added, changed what — and when)
+- **Real-time everywhere** — WebSocket-driven updates land on every screen
+  in under a second
+- **Plugin architecture** — the seams for what's next (see roadmap) are built
+  and already used by the core features themselves
+
+## Quick start (development)
+
+```bash
+pnpm install
+pnpm seed        # demo family: Jared/Sam (password family123), Mia (PIN 1111), Leo (PIN 2222)
+pnpm dev         # server :3000 + web :5173 (proxied)
+```
+
+Open http://localhost:5173. Tests and typechecks:
+
+```bash
+pnpm test        # Vitest: recurrence/DST, scheduler idempotency, API flows
+pnpm typecheck
+```
+
+## Production (Docker)
+
+```bash
+docker compose up -d --build
+```
+
+Two containers start: the app (API + web, SQLite in the `coord-data` volume)
+and Caddy for HTTPS — which is **required** for the installable app and push
+notifications.
+
+**LAN-only (default):** the site is served at `https://coord.local` with a
+certificate from Caddy's internal CA. Point `coord.local` at your server's IP
+(router DNS entry or each device's hosts file) and install Caddy's root cert
+on family devices once: it's at `/data/caddy/pki/authorities/local/root.crt`
+inside the `caddy-data` volume.
+
+**Going online (recommended, easiest for phones):** get a free subdomain from
+DuckDNS (or use your own domain), forward ports 80/443 to your server, then:
+
+```bash
+COORD_DOMAIN=yourfamily.duckdns.org docker compose up -d
+```
+
+…and delete the `tls internal` line from the `Caddyfile`. Caddy fetches and
+renews a Let's Encrypt certificate automatically.
+
+**Backup:** copy the `coord-data` volume (a single SQLite file + WAL). That's
+the whole family database.
+
+### First run
+
+Visit your Coord URL — a setup wizard creates your household and your parent
+account. Add everyone else in **Settings → Family**.
+
+### Phones & tablets
+
+- **iPhone/iPad:** Safari → Share → **Add to Home Screen**. Then open the app
+  and enable reminders in Settings (iOS only allows push for installed PWAs).
+- **Android:** Chrome prompts to install, or ⋮ → Add to Home screen.
+- **Kitchen display:** Settings → Kitchen displays → create a display link and
+  open it once on the tablet. It stays signed in on the dashboard, updates
+  live, and refreshes itself nightly. Recommended: Fully Kiosk Browser
+  (Android) or Guided Access (iPad) to keep the screen on.
+
+## Tech
+
+TypeScript monorepo (pnpm workspaces):
+
+| Package | What |
+| --- | --- |
+| `apps/server` | Fastify 5 + better-sqlite3 (WAL), rrule, web-push; REST + notify-only WebSocket |
+| `apps/web` | React 19 + Vite PWA, Tailwind 4, TanStack Query with WS invalidation, custom-built calendar views |
+| `packages/shared` | Zod schemas = one source of truth for validation + types on both sides |
+| `packages/plugin-sdk` | The stable plugin surface (event bus, plugin context, UI slots) — see its README |
+
+Design choices worth knowing:
+
+- **SQLite on purpose** — one file to back up, zero DB administration; the
+  single-process synchronous driver serializes writes. The schema is plain SQL,
+  portable to Postgres if a household ever outgrows it.
+- **Recurrence is expanded server-side** in the event's own wall-clock
+  timezone, then converted per-occurrence to UTC — a 7am school run stays 7am
+  across DST (unit-tested).
+- **The WebSocket carries no data**, only "something changed" keys; clients
+  refetch via TanStack Query. Simple, debuggable, and impossible to de-sync.
+- **Core features are plugins** — calendar, chores, lists, reminders and the
+  dashboard all register through the same `CoordPlugin` interface future
+  plugins use, so the extension seams are real, not speculative.
+
+## Roadmap
+
+Each of these lands as a plugin on the seams that exist today:
+
+1. **AI assistant** — natural-language event/task management ("add soccer
+   every Wednesday at 5"), grounded recall from the history log; pluggable
+   provider: local (Ollama) or API (Anthropic/OpenAI)
+2. **Voice** — wake word + speech-to-text feeding the same intent parser;
+   microphone mode for the kitchen display
+3. **Cross-family federation** — pair with grandma's or your brother's Coord
+   instance (QR/invite code) and share chosen categories or lists; one
+   deconflicted shopping list across two households, live on both kitchens'
+   dashboards
+4. **Email → calendar** — an AI-assisted inbox watcher that suggests events
+   from school newsletters and appointment emails (parent approves each)
+5. **Google / Outlook two-way sync**
+6. **Drawable calendar** — a pen/finger annotation layer over the calendar
+   grid (the `calendar.day-cell.overlay` slot is reserved for it)
+7. **Home Assistant** — bus events out to MQTT, HA entities in
+
+## Docs
+
+- [Plugin SDK](packages/plugin-sdk/README.md)
+- [Manual device test checklist](docs/testing.md)

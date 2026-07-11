@@ -1,0 +1,16 @@
+# HTTPS is required for the installable app, offline mode and push
+# notifications (service workers only run in secure contexts).
+#
+# - Real domain (recommended): set COORD_DOMAIN=family.duckdns.org in .env and
+#   Caddy fetches a Let's Encrypt certificate automatically.
+# - LAN-only (default coord.local): Caddy issues certs from its own local CA.
+#   Install Caddy's root certificate on each device once (Settings docs), and
+#   point coord.local at your server's IP in your router / hosts file.
+
+{$COORD_DOMAIN:coord.local} {
+    reverse_proxy app:3000
+    # Delete the next line when COORD_DOMAIN is a real public domain so
+    # Caddy uses Let's Encrypt instead of its internal CA.
+    tls internal
+    encode gzip
+}

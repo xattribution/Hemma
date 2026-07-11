@@ -1,0 +1,29 @@
+services:
+  app:
+    build: .
+    restart: unless-stopped
+    environment:
+      # Set to your family's timezone; new households default to the browser's.
+      - TZ=${TZ:-America/New_York}
+    volumes:
+      - coord-data:/data # the whole family database — back this folder up
+
+  caddy:
+    image: caddy:2
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    environment:
+      # LAN-only default. For remote access + real HTTPS, set COORD_DOMAIN to
+      # your domain (e.g. a free DuckDNS name) — see README "Going online".
+      - COORD_DOMAIN=${COORD_DOMAIN:-coord.local}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data
+      - caddy-config:/config
+
+volumes:
+  coord-data:
+  caddy-data:
+  caddy-config:
