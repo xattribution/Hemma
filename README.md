@@ -120,23 +120,26 @@ Design choices worth knowing:
 
 ## Roadmap
 
-Each of these lands as a plugin on the seams that exist today:
+Each of these lands as a plugin on the seams that exist today (design
+decisions for them are pinned in [docs/design-decisions.md](docs/design-decisions.md)):
 
 1. **AI assistant** — natural-language event/task management ("add soccer
-   every Wednesday at 5"), grounded recall from the history log; pluggable
-   provider: local (Ollama) or API (Anthropic/OpenAI)
-2. **Voice** — wake word + speech-to-text feeding the same intent parser;
-   microphone mode for the kitchen display
+   every Wednesday at 5"), grounded recall from the history log; local-first
+   providers (Ollama-style server), hosted APIs only by explicit opt-in
+2. **Voice** — wake word + speech-to-text (Whisper preferred, locally hosted)
+   feeding the same intent parser; microphone mode for the kitchen display
 3. **Cross-family federation** — pair with grandma's or your brother's Coord
-   instance (QR/invite code) and share chosen categories or lists; one
-   deconflicted shopping list across two households, live on both kitchens'
-   dashboards
-4. **Email → calendar** — an AI-assisted inbox watcher that suggests events
-   from school newsletters and appointment emails (parent approves each)
+   instance (QR/invite code); parents choose exactly which categories/lists
+   to share; conflicts resolve by write order, with the full trail in history
+4. **Email → calendar** — an AI-assisted inbox watcher that adds events from
+   school newsletters and appointment emails directly to the calendar
+   (optional approval-tray mode for cautious households)
 5. **Google / Outlook two-way sync**
 6. **Drawable calendar** — a pen/finger annotation layer over the calendar
    grid (the `calendar.day-cell.overlay` slot is reserved for it)
 7. **Home Assistant** — bus events out to MQTT, HA entities in
+8. **Points modes** — optional competition / goal / allowance modes on top of
+   the default keep-it-simple completion experience
 
 ## Docs
 
