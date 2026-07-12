@@ -5,6 +5,7 @@ import { EVENT_CATEGORIES } from "@coord/shared";
 import { useChecklists, useEventsRange, useTaskMutations, useTasks } from "../../api/queries";
 import { Avatar } from "../../components/Avatar";
 import { Modal, primaryBtn } from "../../components/Modal";
+import { useElevation } from "../dashboard/elevation";
 
 interface Props {
   day: Date;
@@ -24,6 +25,7 @@ export function DayModal({ day, members, canManageEvents, onAddEvent, onEventCli
   const { data: taskData } = useTasks(isoDate);
   const { data: lists } = useChecklists();
   const taskMutations = useTaskMutations();
+  const { ensure } = useElevation(); // no-op outside displays
   const memberById = new Map(members.map((m) => [m.id, m]));
 
   const dueTasks = (taskData?.tasks ?? []).filter((t) => t.dueToday);
@@ -91,7 +93,7 @@ export function DayModal({ day, members, canManageEvents, onAddEvent, onEventCli
                 <button
                   key={task.id}
                   type="button"
-                  onClick={() => taskMutations.complete.mutate({ id: task.id, occurrenceDate: task.occurrenceDate })}
+                  onClick={() => void ensure().then((ok) => ok && taskMutations.complete.mutate({ id: task.id, occurrenceDate: task.occurrenceDate }))}
                   className={`flex w-full items-center gap-2 rounded-xl border-2 border-line bg-card px-2.5 py-1.5 text-left transition active:scale-[0.99] ${
                     task.completed ? "opacity-55" : ""
                   }`}

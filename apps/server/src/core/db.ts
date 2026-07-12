@@ -5,7 +5,7 @@ import crypto from "node:crypto";
 
 export type Db = Database.Database;
 
-const SCHEMA_VERSION = 2;
+const SCHEMA_VERSION = 3;
 
 const SCHEMA = /* sql */ `
 CREATE TABLE households (
@@ -213,6 +213,36 @@ function migrate(db: Db) {
         revoked_at INTEGER
       );
     `);
+  }
+  if (version < 3) {
+    // Picture-pattern credentials, per-kid grants, display elevation.
+    // members is rebuilt to widen the credential_type CHECK constraint.
+    db.pragma("foreign_keys = OFF");
+    db.exec(/* sql */ `
+      ALTER TABLE sessions ADD COLUMN elevated_member_id TEXT;
+      ALTER TABLE sessions ADD COLUMN elevated_until INTEGER;
+      ALTER TABLE members ADD COLUMN grants_json TEXT;
+
+      CREATE TABLE members_v3 (
+        id TEXT PRIMARY KEY,
+        household_id TEXT NOT NULL REFERENCES households(id),
+        name TEXT NOT NULL,
+        role TEXT NOT NULL CHECK (role IN ('parent','child')),
+        color TEXT NOT NULL,
+        avatar TEXT NOT NULL,
+        credential_hash TEXT NOT NULL,
+        credential_type TEXT NOT NULL CHECK (credential_type IN ('password','pin','pattern')),
+        sort_order INTEGER NOT NULL DEFAULT 0,
+        grants_json TEXT,
+        created_at INTEGER NOT NULL,
+        deleted_at INTEGER
+      );
+      INSERT INTO members_v3 (id, household_id, name, role, color, avatar, credential_hash, credential_type, sort_order, grants_json, created_at, deleted_at)
+        SELECT id, household_id, name, role, color, avatar, credential_hash, credential_type, sort_order, grants_json, created_at, deleted_at FROM members;
+      DROP TABLE members;
+      ALTER TABLE members_v3 RENAME TO members;
+    `);
+    db.pragma("foreign_keys = ON");
   }
   db.pragma(`user_version = ${SCHEMA_VERSION}`);
 }

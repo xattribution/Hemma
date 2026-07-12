@@ -11,6 +11,7 @@ import { PluginSlot } from "../../plugins/registry";
 import { MonthView } from "../calendar/MonthView";
 import { DayModal } from "../calendar/DayModal";
 import { viewRange } from "../calendar/dates";
+import { ElevationProvider, useElevation } from "./elevation";
 
 /**
  * The always-on display view (kitchen, living room, bedroom…). What it shows
@@ -37,22 +38,24 @@ export function DashboardPage() {
   }
 
   return (
-    <div className="min-h-dvh bg-cream p-4 sm:p-6">
-      <header className="mb-4 flex items-end justify-between">
-        <div>
-          <h1 className="text-2xl font-extrabold sm:text-3xl">🏡 {me.data.household.name}</h1>
-          <p className="font-semibold text-ink-soft">{format(now, "EEEE, MMMM d")}</p>
-        </div>
-        <div className="text-right">
-          <p className="text-4xl font-extrabold tabular-nums sm:text-5xl">{format(now, "h:mm")}</p>
-          {me.data.kind === "member" && (
-            <Link to="/calendar" className="text-sm font-bold text-coral hover:underline">← back to app</Link>
-          )}
-        </div>
-      </header>
+    <ElevationProvider me={me.data}>
+      <div className="min-h-dvh bg-cream p-4 sm:p-6">
+        <header className="mb-4 flex items-end justify-between">
+          <div>
+            <h1 className="text-2xl font-extrabold sm:text-3xl">🏡 {me.data.household.name}</h1>
+            <p className="font-semibold text-ink-soft">{format(now, "EEEE, MMMM d")}</p>
+          </div>
+          <div className="text-right">
+            <p className="text-4xl font-extrabold tabular-nums sm:text-5xl">{format(now, "h:mm")}</p>
+            {me.data.kind === "member" && (
+              <Link to="/calendar" className="text-sm font-bold text-coral hover:underline">← back to app</Link>
+            )}
+          </div>
+        </header>
 
-      {config.layout === "calendar" ? <DisplayCalendar /> : <DisplayCards config={config} />}
-    </div>
+        {config.layout === "calendar" ? <DisplayCalendar /> : <DisplayCards config={config} />}
+      </div>
+    </ElevationProvider>
   );
 }
 
@@ -100,6 +103,7 @@ function DisplayCards({ config }: { config: DisplayConfig }) {
   const { data } = useDashboard();
   const tasks = useTaskMutations();
   const lists = useChecklistMutations();
+  const { ensure } = useElevation();
 
   if (!data) {
     return <div className="flex h-64 items-center justify-center text-5xl"><span className="animate-pop">🏡</span></div>;
@@ -157,7 +161,7 @@ function DisplayCards({ config }: { config: DisplayConfig }) {
                 <div className="space-y-1">
                   {memberTasks.map((task) => (
                     <button key={task.id} type="button"
-                      onClick={() => tasks.complete.mutate({ id: task.id, occurrenceDate: task.occurrenceDate })}
+                      onClick={() => void ensure().then((ok) => ok && tasks.complete.mutate({ id: task.id, occurrenceDate: task.occurrenceDate }))}
                       className={`flex w-full items-center gap-2 rounded-xl border-2 px-3 py-2 text-left transition active:scale-[0.98] ${
                         task.completed ? "border-leaf/40 bg-leaf/10 opacity-60" : "border-line bg-cream"
                       }`}>
@@ -196,7 +200,7 @@ function DisplayCards({ config }: { config: DisplayConfig }) {
                   <li key={item.id}>
                     <label className="flex cursor-pointer items-center gap-2 rounded-lg px-1 py-1 hover:bg-cream">
                       <input type="checkbox" checked={item.checked} className="h-5 w-5 accent-leaf"
-                        onChange={() => lists.toggleItem.mutate({ listId: list.id, itemId: item.id })} />
+                        onChange={() => void ensure().then((ok) => ok && lists.toggleItem.mutate({ listId: list.id, itemId: item.id }))} />
                       <span className={`font-semibold ${item.checked ? "text-ink-soft line-through" : ""}`}>
                         {item.text}
                         {item.quantity && <span className="ml-1 text-xs font-bold text-ink-soft">× {item.quantity}</span>}

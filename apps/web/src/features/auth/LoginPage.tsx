@@ -4,6 +4,7 @@ import { Delete } from "lucide-react";
 import { useLogin, useLoginMembers } from "../../api/queries";
 import { Avatar } from "../../components/Avatar";
 import { inputCls, primaryBtn } from "../../components/Modal";
+import { PatternPad } from "../../components/PatternPad";
 import { showToast } from "../../components/Toast";
 
 export function LoginPage() {
@@ -12,6 +13,7 @@ export function LoginPage() {
   const [selected, setSelected] = useState<Member | null>(null);
   const [pin, setPin] = useState("");
   const [password, setPassword] = useState("");
+  const [attempt, setAttempt] = useState(0);
 
   const submit = (credential: string) => {
     if (!selected) return;
@@ -21,6 +23,7 @@ export function LoginPage() {
         onError: (err) => {
           showToast(err.message, "error");
           setPin("");
+          setAttempt((a) => a + 1);
         },
       },
     );
@@ -57,7 +60,9 @@ export function LoginPage() {
           <Avatar member={selected} size="xl" />
           <span className="text-xl font-extrabold">{selected.name}</span>
 
-          {selected.role === "child" ? (
+          {selected.credentialType === "pattern" ? (
+            <PatternPad resetKey={attempt} onComplete={submit} />
+          ) : selected.credentialType === "pin" ? (
             <>
               <div className="flex gap-2">
                 {[0, 1, 2, 3].map((i) => (

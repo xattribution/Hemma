@@ -33,6 +33,19 @@ export const eventCategorySchema = z.enum(
 export const roleSchema = z.enum(["parent", "child"]);
 export type Role = z.infer<typeof roleSchema>;
 
+export const credentialTypeSchema = z.enum(["password", "pin", "pattern"]);
+export type CredentialType = z.infer<typeof credentialTypeSchema>;
+
+/**
+ * The 3×3 picture-pattern grid (kid-friendly credential): a pattern is 4
+ * taps on this fixed grid, encoded as "pat:" + the four cell indices,
+ * e.g. cat-goat-cat-horse → "pat:0403".
+ */
+export const PATTERN_ANIMALS = ["🐱", "🐶", "🐰", "🐴", "🐐", "🐸", "🐼", "🦊", "🐢"] as const;
+export const PATTERN_REGEX = /^pat:[0-8]{4}$/;
+
+export const grantSchema = z.enum(["event.manage", "task.manage", "checklist.manage"]);
+
 export const memberSchema = z.object({
   id: z.string(),
   name: z.string(),
@@ -40,6 +53,9 @@ export const memberSchema = z.object({
   color: z.string(),
   avatar: z.string(),
   sortOrder: z.number(),
+  credentialType: credentialTypeSchema,
+  /** Extra capabilities granted to a kid (parents implicitly have all). */
+  grants: z.array(grantSchema),
 });
 export type Member = z.infer<typeof memberSchema>;
 
@@ -48,8 +64,10 @@ export const memberInputSchema = z.object({
   role: roleSchema,
   color: z.string().regex(/^#[0-9a-f]{6}$/i),
   avatar: z.string().min(1).max(8),
-  // Parents set a password (min 6); kids get a 4-digit PIN.
+  // Parents: password (min 6). Kids: 4-digit PIN, or a picture pattern ("pat:0403").
   credential: z.string().min(4).max(72),
+  credentialType: credentialTypeSchema.optional(),
+  grants: z.array(grantSchema).optional(),
 });
 export type MemberInput = z.infer<typeof memberInputSchema>;
 
@@ -73,6 +91,12 @@ export const displayConfigSchema = z.object({
   showEvents: z.boolean().default(true),
   showChores: z.boolean().default(true),
   showLists: z.boolean().default(true),
+  /**
+   * Always-on trust model: the display is freely readable, but changing
+   * anything asks "who's doing this?" — a quick avatar + password/PIN/
+   * pattern check that acts as that member for a couple of minutes.
+   */
+  requireAuthToChange: z.boolean().default(true),
 });
 export type DisplayConfig = z.infer<typeof displayConfigSchema>;
 export const DEFAULT_DISPLAY_CONFIG: DisplayConfig = {
@@ -80,6 +104,7 @@ export const DEFAULT_DISPLAY_CONFIG: DisplayConfig = {
   showEvents: true,
   showChores: true,
   showLists: true,
+  requireAuthToChange: true,
 };
 
 export interface DisplayInfo {
@@ -93,7 +118,14 @@ export interface DisplayInfo {
 
 export type Me =
   | { kind: "member"; member: Member; household: { name: string; timezone: string } }
-  | { kind: "device"; label: string; config: DisplayConfig; household: { name: string; timezone: string } };
+  | {
+      kind: "device";
+      label: string;
+      config: DisplayConfig;
+      /** Who the display is currently acting as, if someone verified themselves. */
+      elevation: { member: Member; until: number } | null;
+      household: { name: string; timezone: string };
+    };
 
 // ---------- Events ----------
 

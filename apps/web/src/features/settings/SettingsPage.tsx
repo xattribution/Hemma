@@ -1,10 +1,13 @@
 import { useState } from "react";
-import { Bell, Pencil, Plus, Puzzle, Trash2, Users } from "lucide-react";
-import type { Me, Member, Role } from "@coord/shared";
-import { AVATARS, MEMBER_COLORS, can } from "@coord/shared";
+import { Bell, Home, Pencil, Plus, Puzzle, Trash2, Users } from "lucide-react";
+import { useQueryClient } from "@tanstack/react-query";
+import type { Grant, Me, Member, Role } from "@coord/shared";
+import { AVATARS, GRANTS, MEMBER_COLORS, PATTERN_ANIMALS, can } from "@coord/shared";
+import { api } from "../../api/client";
 import { useMemberMutations, useMembers, usePlugins, useTogglePlugin } from "../../api/queries";
 import { Avatar } from "../../components/Avatar";
 import { Modal, ghostBtn, inputCls, labelCls, primaryBtn } from "../../components/Modal";
+import { PatternPad } from "../../components/PatternPad";
 import { showToast } from "../../components/Toast";
 import { usePush } from "./usePush";
 import { DisplaysSection } from "./DisplaysSection";
@@ -15,6 +18,7 @@ export function SettingsPage({ me }: { me: Extract<Me, { kind: "member" }> }) {
   return (
     <div className="mx-auto max-w-2xl space-y-4">
       <h2 className="text-xl font-extrabold">Settings</h2>
+      {isParent && <HouseholdSection currentName={me.household.name} />}
       <FamilySection isParent={isParent} />
       <NotificationsSection />
       {isParent && <DisplaysSection />}
@@ -24,6 +28,34 @@ export function SettingsPage({ me }: { me: Extract<Me, { kind: "member" }> }) {
         Coord v0.1 — your family's data lives on your own server. 💛
       </section>
     </div>
+  );
+}
+
+// ---------- Household ----------
+
+function HouseholdSection({ currentName }: { currentName: string }) {
+  const qc = useQueryClient();
+  const [name, setName] = useState(currentName);
+
+  const save = async (e: React.FormEvent) => {
+    e.preventDefault();
+    try {
+      await api("/api/household", { method: "PATCH", body: { name } });
+      void qc.invalidateQueries({ queryKey: ["me"] });
+      showToast("Family name updated 🏡");
+    } catch (err) {
+      showToast((err as Error).message, "error");
+    }
+  };
+
+  return (
+    <section className="rounded-card bg-card p-4 shadow-card">
+      <h3 className="mb-2 flex items-center gap-2 font-extrabold"><Home size={18} /> Our home</h3>
+      <form onSubmit={save} className="flex gap-2">
+        <input className={inputCls} value={name} onChange={(e) => setName(e.target.value)} required maxLength={60} />
+        <button className={`${primaryBtn} shrink-0`} disabled={name.trim() === currentName}>Save</button>
+      </form>
+    </section>
   );
 }
 
@@ -71,17 +103,24 @@ function MemberModal({ member, onClose }: { member: Member | null; onClose: () =
   const [avatar, setAvatar] = useState(member?.avatar ?? AVATARS[1]);
   const [color, setColor] = useState(member?.color ?? MEMBER_COLORS[3]);
   const [credential, setCredential] = useState("");
+  const [credType, setCredType] = useState<"pin" | "pattern">(
+    member?.credentialType === "pattern" ? "pattern" : "pin",
+  );
+  const [grants, setGrants] = useState<Grant[]>(member?.grants ?? []);
 
   const submit = (e: React.FormEvent) => {
     e.preventDefault();
+    if (!member && role === "child" && credType === "pattern" && !credential) {
+      showToast("Tap the picture pattern first", "error");
+      return;
+    }
     const options = { onSuccess: onClose, onError: (err: Error) => showToast(err.message, "error") };
+    const credentialType = role === "parent" ? ("password" as const) : credType;
+    const payload = { name, role, avatar, color, credentialType, grants: role === "child" ? grants : [] };
     if (member) {
-      mutations.update.mutate(
-        { id: member.id, name, role, avatar, color, ...(credential ? { credential } : {}) },
-        options,
-      );
+      mutations.update.mutate({ id: member.id, ...payload, ...(credential ? { credential } : {}) }, options);
     } else {
-      mutations.create.mutate({ name, role, avatar, color, credential }, options);
+      mutations.create.mutate({ ...payload, credential }, options);
     }
   };
 
@@ -100,15 +139,65 @@ function MemberModal({ member, onClose }: { member: Member | null; onClose: () =
             ))}
           </div>
         </div>
-        <div>
-          <label className={labelCls}>{role === "child" ? `4-digit PIN${member ? " (leave blank to keep)" : ""}` : `Password${member ? " (leave blank to keep)" : ""}`}</label>
-          <input className={inputCls} type={role === "child" ? "tel" : "password"}
-            inputMode={role === "child" ? "numeric" : undefined}
-            pattern={role === "child" ? "\\d{4}" : undefined}
-            placeholder={role === "child" ? "1234" : "At least 6 characters"}
-            value={credential} onChange={(e) => setCredential(e.target.value)}
-            required={!member} minLength={role === "child" ? 4 : 6} maxLength={role === "child" ? 4 : 72} />
-        </div>
+
+        {role === "child" && (
+          <div>
+            <label className={labelCls}>Sign-in style</label>
+            <div className="flex gap-2">
+              <button type="button" onClick={() => { setCredType("pin"); setCredential(""); }}
+                className={`flex-1 rounded-xl border-2 px-3 py-2 font-bold ${credType === "pin" ? "border-coral bg-coral-soft" : "border-line bg-card"}`}>
+                🔢 4-digit PIN
+              </button>
+              <button type="button" onClick={() => { setCredType("pattern"); setCredential(""); }}
+                className={`flex-1 rounded-xl border-2 px-3 py-2 font-bold ${credType === "pattern" ? "border-coral bg-coral-soft" : "border-line bg-card"}`}>
+                🐱 Picture pattern
+              </button>
+            </div>
+          </div>
+        )}
+
+        {role === "child" && credType === "pattern" ? (
+          <div>
+            <label className={labelCls}>
+              {credential ? "Pattern set! Tap again to change it" : `Tap 4 pictures in order${member ? " (skip to keep current)" : ""}`}
+            </label>
+            <PatternPad resetKey={credential} onComplete={setCredential} />
+            {credential && (
+              <p className="mt-1 text-center text-lg">
+                {credential.slice(4).split("").map((i) => PATTERN_ANIMALS[Number(i)]).join(" → ")}
+              </p>
+            )}
+          </div>
+        ) : (
+          <div>
+            <label className={labelCls}>{role === "child" ? `4-digit PIN${member ? " (leave blank to keep)" : ""}` : `Password${member ? " (leave blank to keep)" : ""}`}</label>
+            <input className={inputCls} type={role === "child" ? "tel" : "password"}
+              inputMode={role === "child" ? "numeric" : undefined}
+              pattern={role === "child" ? "\\d{4}" : undefined}
+              placeholder={role === "child" ? "1234" : "At least 6 characters"}
+              value={credential} onChange={(e) => setCredential(e.target.value)}
+              required={!member} minLength={role === "child" ? 4 : 6} maxLength={role === "child" ? 4 : 72} />
+          </div>
+        )}
+
+        {role === "child" && (
+          <div>
+            <label className={labelCls}>Can also…</label>
+            <div className="space-y-1.5">
+              {GRANTS.map(({ key, label }) => (
+                <label key={key} className="flex cursor-pointer items-center gap-2 rounded-xl border-2 border-line px-3 py-2">
+                  <input type="checkbox" className="h-5 w-5 accent-leaf" checked={grants.includes(key)}
+                    onChange={() =>
+                      setGrants((current) =>
+                        current.includes(key) ? current.filter((g) => g !== key) : [...current, key],
+                      )
+                    } />
+                  <span className="text-sm font-bold">{label}</span>
+                </label>
+              ))}
+            </div>
+          </div>
+        )}
         <div>
           <label className={labelCls}>Look</label>
           <div className="flex flex-wrap gap-1">

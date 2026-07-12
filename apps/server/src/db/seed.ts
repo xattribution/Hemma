@@ -23,20 +23,26 @@ db.prepare("INSERT INTO households (id, name, timezone, created_at) VALUES (?, ?
   householdId, "The Kotvas Family", TZ, now(),
 );
 
-function addMember(name: string, role: "parent" | "child", color: string, avatar: string, credential: string, order: number) {
+function addMember(
+  name: string, role: "parent" | "child", color: string, avatar: string,
+  credential: string, order: number,
+  credentialType: "password" | "pin" | "pattern" = role === "child" ? "pin" : "password",
+  grants: string[] = [],
+) {
   const id = uid();
   db.prepare(
-    `INSERT INTO members (id, household_id, name, role, color, avatar, credential_hash, credential_type, sort_order, created_at)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    `INSERT INTO members (id, household_id, name, role, color, avatar, credential_hash, credential_type, sort_order, grants_json, created_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
   ).run(id, householdId, name, role, color, avatar, hashCredential(credential),
-    role === "child" ? "pin" : "password", order, now());
+    credentialType, order, grants.length ? JSON.stringify(grants) : null, now());
   return id;
 }
 
 const jared = addMember("Jared", "parent", "#3d87c9", "🦉", "family123", 0);
 const sam = addMember("Sam", "parent", "#c364ab", "🦊", "family123", 1);
-const mia = addMember("Mia", "child", "#e08f3c", "🦄", "1111", 2);
-const leo = addMember("Leo", "child", "#5aa832", "🐸", "2222", 3);
+// Mia: PIN + allowed to manage lists. Leo: picture pattern (cat→horse→cat→goat).
+const mia = addMember("Mia", "child", "#e08f3c", "🦄", "1111", 2, "pin", ["checklist.manage"]);
+const leo = addMember("Leo", "child", "#5aa832", "🐸", "pat:0304", 3, "pattern");
 
 // ---- Events ----
 const bus = createBus();
@@ -112,4 +118,4 @@ addList("Beach trip packing", "🏖️", "packing", false, at(5, 12), [
 
 console.log("Seeded demo family ✔");
 console.log("  Parents: Jared, Sam — password: family123");
-console.log("  Kids: Mia (PIN 1111), Leo (PIN 2222)");
+console.log("  Kids: Mia (PIN 1111, can manage lists), Leo (pattern: cat → horse → cat → goat)");

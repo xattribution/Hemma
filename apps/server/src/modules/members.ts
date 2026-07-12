@@ -1,13 +1,26 @@
-import { z } from "zod";
-import { memberInputSchema } from "@coord/shared";
+import { memberInputSchema, PATTERN_REGEX, type CredentialType, type Role } from "@coord/shared";
 import type { CoreModule } from "../core/plugin-host.js";
 import { hashCredential, requireAccess, requireActor, toMember, type MemberRow } from "../core/auth.js";
-import { actorOf } from "../core/actor.js";
 import { parse } from "../core/http.js";
 import { now, uid } from "../core/db.js";
 import { recordAudit } from "../core/audit.js";
 
 const memberPatchSchema = memberInputSchema.partial();
+
+/** Kids use a 4-digit PIN or a picture pattern; parents use a password. */
+function credentialError(role: Role, type: CredentialType, credential: string): string | null {
+  if (role === "parent") {
+    return type === "password" && credential.length >= 6 ? null : "Parents sign in with a password (6+ characters)";
+  }
+  if (type === "pin") return /^\d{4}$/.test(credential) ? null : "PINs are 4 digits";
+  if (type === "pattern") return PATTERN_REGEX.test(credential) ? null : "Patterns are 4 taps on the picture grid";
+  return "Kids sign in with a PIN or a picture pattern";
+}
+
+function resolveCredentialType(role: Role, requested: CredentialType | undefined): CredentialType {
+  if (role === "parent") return "password";
+  return requested === "pattern" ? "pattern" : "pin";
+}
 
 export const membersModule: CoreModule = {
   id: "core.members",
@@ -27,19 +40,21 @@ export const membersModule: CoreModule = {
       if (!actor) return;
       const input = parse(memberInputSchema, req.body, reply);
       if (!input) return;
-      if (input.role === "child" && !/^\d{4}$/.test(input.credential)) {
-        reply.code(400).send({ error: "Kids sign in with a 4-digit PIN" });
+      const credentialType = resolveCredentialType(input.role, input.credentialType);
+      const problem = credentialError(input.role, credentialType, input.credential);
+      if (problem) {
+        reply.code(400).send({ error: problem });
         return;
       }
       const id = uid();
       const maxOrder = (db.prepare("SELECT COALESCE(MAX(sort_order), 0) AS m FROM members").get() as { m: number }).m;
       db.prepare(
-        `INSERT INTO members (id, household_id, name, role, color, avatar, credential_hash, credential_type, sort_order, created_at)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        `INSERT INTO members (id, household_id, name, role, color, avatar, credential_hash, credential_type, sort_order, grants_json, created_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       ).run(
         id, actor.householdId, input.name, input.role, input.color, input.avatar,
-        hashCredential(input.credential), input.role === "child" ? "pin" : "password",
-        maxOrder + 1, now(),
+        hashCredential(input.credential), credentialType,
+        maxOrder + 1, input.grants ? JSON.stringify(input.grants) : null, now(),
       );
       recordAudit(db, actor.householdId, actor, "member", id, "create",
         `${actor.name} added ${input.name} to the family`);
@@ -59,12 +74,20 @@ export const membersModule: CoreModule = {
         reply.code(404).send({ error: "Member not found" });
         return;
       }
-      db.prepare("UPDATE members SET name = ?, role = ?, color = ?, avatar = ? WHERE id = ?").run(
-        patch.name ?? row.name, patch.role ?? row.role, patch.color ?? row.color, patch.avatar ?? row.avatar, id,
+      db.prepare("UPDATE members SET name = ?, role = ?, color = ?, avatar = ?, grants_json = ? WHERE id = ?").run(
+        patch.name ?? row.name, patch.role ?? row.role, patch.color ?? row.color, patch.avatar ?? row.avatar,
+        patch.grants !== undefined ? JSON.stringify(patch.grants) : row.grants_json, id,
       );
       if (patch.credential) {
+        const role = patch.role ?? row.role;
+        const credentialType = resolveCredentialType(role, patch.credentialType ?? (row.credential_type === "password" ? undefined : row.credential_type));
+        const problem = credentialError(role, credentialType, patch.credential);
+        if (problem) {
+          reply.code(400).send({ error: problem });
+          return;
+        }
         db.prepare("UPDATE members SET credential_hash = ?, credential_type = ? WHERE id = ?").run(
-          hashCredential(patch.credential), (patch.role ?? row.role) === "child" ? "pin" : "password", id,
+          hashCredential(patch.credential), credentialType, id,
         );
       }
       recordAudit(db, actor.householdId, actor, "member", id, "update",

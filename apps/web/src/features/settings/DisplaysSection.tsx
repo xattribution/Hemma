@@ -119,6 +119,8 @@ function DisplayConfigEditor({ display, onChange }: { display: DisplayInfo; onCh
       <Toggle label="Events" value={config.showEvents} onToggle={() => set({ showEvents: !config.showEvents })} />
       <Toggle label="Chores" value={config.showChores} onToggle={() => set({ showChores: !config.showChores })} />
       <Toggle label="Lists" value={config.showLists} onToggle={() => set({ showLists: !config.showLists })} />
+      <Toggle label="🔐 Ask who's changing" value={config.requireAuthToChange}
+        onToggle={() => set({ requireAuthToChange: !config.requireAuthToChange })} />
     </div>
   );
 }

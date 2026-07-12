@@ -7,8 +7,8 @@ import {
 import type { CoreModule } from "../core/plugin-host.js";
 import {
   SESSION_COOKIE, clearLoginFailures, createSession, destroySession, hashCredential,
-  loginAllowed, recordLoginFailure, requireActor, sessionOf, setSessionCookie, toMember,
-  verifyCredential, type MemberRow,
+  loginAllowed, lookupSession, recordLoginFailure, requireActor, sessionOf, setElevation,
+  setSessionCookie, toMember, verifyCredential, type MemberRow,
 } from "../core/auth.js";
 import { getHousehold } from "../core/household.js";
 import { parse } from "../core/http.js";
@@ -111,14 +111,79 @@ export const authModule: CoreModule = {
       }
       // Devices and agents both get the device shape; agents rarely call this.
       let config = DEFAULT_DISPLAY_CONFIG;
-      if (session.kind === "device" && session.deviceTokenId) {
-        const row = db
-          .prepare("SELECT config_json FROM device_tokens WHERE id = ?")
-          .get(session.deviceTokenId) as { config_json: string | null } | undefined;
-        if (row) config = deviceConfig(row);
+      let elevation: Extract<Me, { kind: "device" }>["elevation"] = null;
+      if (session.kind === "device") {
+        if (session.deviceTokenId) {
+          const row = db
+            .prepare("SELECT config_json FROM device_tokens WHERE id = ?")
+            .get(session.deviceTokenId) as { config_json: string | null } | undefined;
+          if (row) config = deviceConfig(row);
+        }
+        if (session.elevatedMember && session.elevatedUntil) {
+          elevation = { member: toMember(session.elevatedMember), until: session.elevatedUntil };
+        }
       }
-      const me: Me = { kind: "device", label: session.label, config, household: householdInfo };
+      const me: Me = { kind: "device", label: session.label, config, elevation, household: householdInfo };
       return me;
+    });
+
+    // ---- Household ----
+    app.patch("/api/household", (req, reply) => {
+      const access = requireActor(db, req, reply, "settings.manage");
+      if (!access) return;
+      const body = parse(
+        z.object({ name: z.string().trim().min(1).max(60).optional(), timezone: z.string().min(1).optional() }),
+        req.body, reply,
+      );
+      if (!body) return;
+      const household = getHousehold(db)!;
+      db.prepare("UPDATE households SET name = ?, timezone = ? WHERE id = ?").run(
+        body.name ?? household.name, body.timezone ?? household.timezone, household.id,
+      );
+      recordAudit(db, household.id, { memberId: access.memberId, name: access.name }, "household", household.id,
+        "update", `${access.name} renamed the family to "${body.name ?? household.name}"`);
+      broadcast({ type: "invalidate", keys: ["me", "dashboard"] });
+      return { ok: true };
+    });
+
+    // ---- Display elevation: "who's changing things?" ----
+
+    app.post("/api/auth/device/elevate", (req, reply) => {
+      const cookieToken = req.cookies[SESSION_COOKIE];
+      const session = cookieToken ? lookupSession(db, cookieToken) : null;
+      if (session?.kind !== "device") {
+        reply.code(400).send({ error: "Only displays elevate" });
+        return;
+      }
+      const body = parse(z.object({ memberId: z.string(), credential: z.string().min(1).max(72) }), req.body, reply);
+      if (!body) return;
+      const key = `${req.ip}:elevate:${body.memberId}`;
+      if (!loginAllowed(key)) {
+        reply.code(429).send({ error: "Too many tries — take a break and try again in a bit" });
+        return;
+      }
+      const member = db
+        .prepare("SELECT * FROM members WHERE id = ? AND deleted_at IS NULL")
+        .get(body.memberId) as (MemberRow & { credential_hash: string }) | undefined;
+      if (!member || !verifyCredential(body.credential, member.credential_hash)) {
+        recordLoginFailure(key);
+        reply.code(401).send({ error: "That didn't match — try again" });
+        return;
+      }
+      clearLoginFailures(key);
+      const until = setElevation(db, cookieToken!, member.id);
+      return { member: toMember(member), until };
+    });
+
+    app.post("/api/auth/device/deelevate", (req, reply) => {
+      const cookieToken = req.cookies[SESSION_COOKIE];
+      const session = cookieToken ? lookupSession(db, cookieToken) : null;
+      if (session?.kind !== "device") {
+        reply.code(400).send({ error: "Only displays elevate" });
+        return;
+      }
+      setElevation(db, cookieToken!, null);
+      return { ok: true };
     });
 
     // ---- Shared display links (kitchen, living room, bedroom…) ----
