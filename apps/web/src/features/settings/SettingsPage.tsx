@@ -109,6 +109,7 @@ function MemberModal({ member, onClose }: { member: Member | null; onClose: () =
     member?.credentialType === "pattern" ? "pattern" : "pin",
   );
   const [grants, setGrants] = useState<Grant[]>(member?.grants ?? []);
+  const [uiLevel, setUiLevel] = useState<"little" | "teen">(member?.uiLevel ?? "little");
 
   const submit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -118,7 +119,11 @@ function MemberModal({ member, onClose }: { member: Member | null; onClose: () =
     }
     const options = { onSuccess: onClose, onError: (err: Error) => showToast(err.message, "error") };
     const credentialType = role === "parent" ? ("password" as const) : credType;
-    const payload = { name, role, avatar, color, credentialType, grants: role === "child" ? grants : [] };
+    const payload = {
+      name, role, avatar, color, credentialType,
+      grants: role === "child" ? grants : [],
+      uiLevel: role === "child" ? uiLevel : null,
+    };
     if (member) {
       mutations.update.mutate({ id: member.id, ...payload, ...(credential ? { credential } : {}) }, options);
     } else {
@@ -141,6 +146,24 @@ function MemberModal({ member, onClose }: { member: Member | null; onClose: () =
             ))}
           </div>
         </div>
+
+        {role === "child" && (
+          <div>
+            <label className={labelCls}>Their app</label>
+            <div className="flex gap-2">
+              <button type="button" onClick={() => setUiLevel("little")}
+                className={`flex-1 rounded-xl border-2 px-3 py-2 text-left ${uiLevel === "little" ? "border-coral bg-coral-soft" : "border-line bg-card"}`}>
+                <span className="block font-bold">🧸 Little kid</span>
+                <span className="text-xs font-semibold text-ink-soft">Big, simple screens — just their jobs, days & lists</span>
+              </button>
+              <button type="button" onClick={() => setUiLevel("teen")}
+                className={`flex-1 rounded-xl border-2 px-3 py-2 text-left ${uiLevel === "teen" ? "border-coral bg-coral-soft" : "border-line bg-card"}`}>
+                <span className="block font-bold">🚲 Big kid</span>
+                <span className="text-xs font-semibold text-ink-soft">The full app, minus settings & history</span>
+              </button>
+            </div>
+          </div>
+        )}
 
         {role === "child" && (
           <div>

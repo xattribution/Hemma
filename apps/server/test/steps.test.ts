@@ -14,7 +14,7 @@ beforeAll(async () => {
     payload: { householdName: "Steps", timezone: "America/New_York", owner: { name: "P", color: "#3d87c9", avatar: "🦉", credential: "pass123" } },
   });
   const header = setup.headers["set-cookie"];
-  cookie = (Array.isArray(header) ? header[0] : (header as string)).split(";")[0]!;
+  cookie = (Array.isArray(header) ? header[0]! : (header as string)).split(";")[0]!;
   const chore = await app.inject({
     method: "POST", url: "/api/tasks", headers: { cookie },
     payload: { title: "Clean the living room", kind: "chore", repeat: "daily", steps: ["vacuum", "toys", "pillows"] },

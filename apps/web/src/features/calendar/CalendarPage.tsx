@@ -1,11 +1,10 @@
 import { useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router";
-import { Check, ChevronDown, ChevronLeft, ChevronRight, ChevronUp, Plus } from "lucide-react";
+import { ChevronLeft, ChevronRight, Plus } from "lucide-react";
 import type { EventInstance } from "@coord/shared";
-import { useEventsRange, useMembers, useTaskMutations, useTasks } from "../../api/queries";
+import { useEventsRange, useMembers } from "../../api/queries";
 import { PluginSlot } from "../../plugins/registry";
 import { FullscreenButton } from "../../components/FullscreenButton";
-import { Avatar } from "../../components/Avatar";
 import { ghostBtn, primaryBtn } from "../../components/Modal";
 import {
   fromParam, stepAnchor, toParam, viewRange, viewTitle, weekDays, type CalView,
@@ -87,8 +86,6 @@ export function CalendarPage() {
         />
       )}
 
-      <TodayChoresStrip />
-
       {modal?.kind === "day" && (
         <DayModal
           day={modal.day}
@@ -106,60 +103,6 @@ export function CalendarPage() {
         <EventModal members={members ?? []} instance={modal.instance} onClose={() => setModal(null)} />
       )}
     </div>
-  );
-}
-
-/**
- * Today's chores, right on the main page — collapsible so the calendar can
- * be the whole screen when you want it to be.
- */
-function TodayChoresStrip() {
-  const [open, setOpen] = useState(() => localStorage.getItem("coord.choresStrip") !== "hidden");
-  const { data } = useTasks();
-  const { data: members } = useMembers();
-  const complete = useTaskMutations().complete;
-
-  const toggleOpen = () => {
-    setOpen((current) => {
-      localStorage.setItem("coord.choresStrip", current ? "hidden" : "shown");
-      return !current;
-    });
-  };
-
-  const due = (data?.tasks ?? []).filter((t) => t.dueToday);
-  const memberById = new Map((members ?? []).map((m) => [m.id, m]));
-  const remaining = due.filter((t) => !t.completed).length;
-
-  return (
-    <section className="rounded-card bg-card shadow-card">
-      <button type="button" onClick={toggleOpen}
-        className="flex w-full items-center gap-2 px-4 py-2.5 text-left font-extrabold">
-        <span>Today's chores</span>
-        <span className={`rounded-full px-2 py-0.5 text-xs font-extrabold ${remaining ? "bg-coral-soft text-coral" : "bg-leaf/15 text-leaf"}`}>
-          {remaining ? `${remaining} to go` : "all done 🎉"}
-        </span>
-        <span className="ml-auto text-ink-soft">{open ? <ChevronUp size={18} /> : <ChevronDown size={18} />}</span>
-      </button>
-      {open && (
-        <div className="flex flex-wrap gap-1.5 px-4 pb-3">
-          {due.length === 0 && <p className="text-sm font-semibold text-ink-soft">Nothing due today.</p>}
-          {due.map((task) => {
-            const assignee = task.assigneeId ? memberById.get(task.assigneeId) : null;
-            return (
-              <button key={task.id} type="button"
-                onClick={() => complete.mutate({ id: task.id, occurrenceDate: task.occurrenceDate })}
-                className={`flex items-center gap-1.5 rounded-full border-2 px-2.5 py-1 text-sm font-bold transition active:scale-95 ${
-                  task.completed ? "border-leaf/40 bg-leaf/10 text-ink-soft line-through" : "border-line bg-cream"
-                }`}>
-                {task.completed ? <Check size={14} className="text-leaf" /> : <span>{task.icon}</span>}
-                {task.title}
-                {assignee && <Avatar member={assignee} size="sm" />}
-              </button>
-            );
-          })}
-        </div>
-      )}
-    </section>
   );
 }
 

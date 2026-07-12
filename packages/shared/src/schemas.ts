@@ -3,8 +3,8 @@ import { z } from "zod";
 // ---------- Constants ----------
 
 export const MEMBER_COLORS = [
-  "#e05d5d", "#e08f3c", "#d9a900", "#5aa832", "#2f9e8f",
-  "#3d87c9", "#7a6fd0", "#c364ab", "#8a6d4f", "#5a7d8c",
+  "#d97b72", "#dda15e", "#c9a227", "#7fb069", "#5fa8a0",
+  "#6f9ccb", "#9d8bd0", "#c98bb5", "#a08066", "#7d95a3",
 ] as const;
 
 export const AVATARS = [
@@ -13,14 +13,14 @@ export const AVATARS = [
 ] as const;
 
 export const EVENT_CATEGORIES = {
-  family: { label: "Family", color: "#e05d5d", icon: "🏠" },
-  school: { label: "School", color: "#3d87c9", icon: "🎒" },
-  sports: { label: "Sports", color: "#5aa832", icon: "⚽" },
-  work: { label: "Work", color: "#5a7d8c", icon: "💼" },
-  appointment: { label: "Appointment", color: "#7a6fd0", icon: "🩺" },
-  birthday: { label: "Birthday", color: "#c364ab", icon: "🎂" },
-  holiday: { label: "Holiday", color: "#e08f3c", icon: "🎉" },
-  other: { label: "Other", color: "#8a6d4f", icon: "📌" },
+  family: { label: "Family", color: "#d97b72", icon: "🏠" },
+  school: { label: "School", color: "#6f9ccb", icon: "🎒" },
+  sports: { label: "Sports", color: "#7fb069", icon: "⚽" },
+  work: { label: "Work", color: "#7d95a3", icon: "💼" },
+  appointment: { label: "Appointment", color: "#9d8bd0", icon: "🩺" },
+  birthday: { label: "Birthday", color: "#c98bb5", icon: "🎂" },
+  holiday: { label: "Holiday", color: "#dda15e", icon: "🎉" },
+  other: { label: "Other", color: "#a08066", icon: "📌" },
 } as const;
 
 export type EventCategory = keyof typeof EVENT_CATEGORIES;
@@ -56,6 +56,8 @@ export const memberSchema = z.object({
   credentialType: credentialTypeSchema,
   /** Extra capabilities granted to a kid (parents implicitly have all). */
   grants: z.array(grantSchema),
+  /** Kid UI tier: 'little' = giant Fisher-Price UI; 'teen'/null = standard. */
+  uiLevel: z.enum(["little", "teen"]).nullable(),
 });
 export type Member = z.infer<typeof memberSchema>;
 
@@ -68,6 +70,7 @@ export const memberInputSchema = z.object({
   credential: z.string().min(4).max(72),
   credentialType: credentialTypeSchema.optional(),
   grants: z.array(grantSchema).optional(),
+  uiLevel: z.enum(["little", "teen"]).nullable().optional(),
 });
 export type MemberInput = z.infer<typeof memberInputSchema>;
 

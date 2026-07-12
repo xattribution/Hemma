@@ -4,7 +4,7 @@ export function Avatar({ member, size = "md" }: { member: Pick<Member, "avatar" 
   const px = { sm: "h-7 w-7 text-sm", md: "h-10 w-10 text-xl", lg: "h-14 w-14 text-3xl", xl: "h-20 w-20 text-4xl" }[size];
   return (
     <span
-      className={`inline-flex ${px} shrink-0 items-center justify-center rounded-full border-[3px] bg-card shadow-card`}
+      className={`inline-flex ${px} shrink-0 items-center justify-center rounded-full border-[3px] bg-cream shadow-card`}
       style={{ borderColor: member.color }}
       title={member.name}
     >

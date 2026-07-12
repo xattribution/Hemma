@@ -28,21 +28,23 @@ function addMember(
   credential: string, order: number,
   credentialType: "password" | "pin" | "pattern" = role === "child" ? "pin" : "password",
   grants: string[] = [],
+  uiLevel: "little" | "teen" | null = null,
 ) {
   const id = uid();
   db.prepare(
-    `INSERT INTO members (id, household_id, name, role, color, avatar, credential_hash, credential_type, sort_order, grants_json, created_at)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    `INSERT INTO members (id, household_id, name, role, color, avatar, credential_hash, credential_type, sort_order, grants_json, ui_level, created_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
   ).run(id, householdId, name, role, color, avatar, hashCredential(credential),
-    credentialType, order, grants.length ? JSON.stringify(grants) : null, now());
+    credentialType, order, grants.length ? JSON.stringify(grants) : null, uiLevel, now());
   return id;
 }
 
-const jared = addMember("Jared", "parent", "#3d87c9", "🦉", "family123", 0);
-const sam = addMember("Sam", "parent", "#c364ab", "🦊", "family123", 1);
-// Mia: PIN + allowed to manage lists. Leo: picture pattern (cat→horse→cat→goat).
-const mia = addMember("Mia", "child", "#e08f3c", "🦄", "1111", 2, "pin", ["checklist.manage"]);
-const leo = addMember("Leo", "child", "#5aa832", "🐸", "pat:0304", 3, "pattern");
+const jared = addMember("Jared", "parent", "#6f9ccb", "🦉", "family123", 0);
+const sam = addMember("Sam", "parent", "#c98bb5", "🦊", "family123", 1);
+// Mia: teen tier, PIN + allowed to manage lists. Leo: little-kid tier with a
+// picture pattern (cat→horse→cat→goat).
+const mia = addMember("Mia", "child", "#dda15e", "🦄", "1111", 2, "pin", ["checklist.manage"], "teen");
+const leo = addMember("Leo", "child", "#7fb069", "🐸", "pat:0304", 3, "pattern", [], "little");
 
 // ---- Events ----
 const bus = createBus();

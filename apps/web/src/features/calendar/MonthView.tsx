@@ -16,6 +16,10 @@ export function MonthView({ anchor, instances, members, onDayClick, onEventClick
   const days = monthGridDays(anchor);
   const today = new Date();
   const memberById = new Map(members.map((m) => [m.id, m]));
+  // Cells stretch so the grid fills the viewport — no dead space below the
+  // calendar in fullscreen/wall-display mode (~15rem covers header + toolbar).
+  const weeks = days.length / 7;
+  const cellMinHeight = `max(5rem, calc((100dvh - 15rem) / ${weeks}))`;
 
   return (
     <div className="overflow-hidden rounded-card bg-card shadow-card">
@@ -35,7 +39,8 @@ export function MonthView({ anchor, instances, members, onDayClick, onEventClick
             <div
               key={day.getTime()}
               onClick={() => onDayClick(day)}
-              className={`relative min-h-20 cursor-pointer border-b border-r border-line p-1 transition hover:bg-coral-soft/40 sm:min-h-28 ${
+              style={{ minHeight: cellMinHeight }}
+              className={`relative cursor-pointer border-b border-r border-line p-1 transition hover:bg-coral-soft/40 ${
                 inMonth ? "" : "bg-cream/60 text-ink-soft"
               }`}
             >

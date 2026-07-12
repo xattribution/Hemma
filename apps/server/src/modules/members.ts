@@ -49,12 +49,13 @@ export const membersModule: CoreModule = {
       const id = uid();
       const maxOrder = (db.prepare("SELECT COALESCE(MAX(sort_order), 0) AS m FROM members").get() as { m: number }).m;
       db.prepare(
-        `INSERT INTO members (id, household_id, name, role, color, avatar, credential_hash, credential_type, sort_order, grants_json, created_at)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        `INSERT INTO members (id, household_id, name, role, color, avatar, credential_hash, credential_type, sort_order, grants_json, ui_level, created_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       ).run(
         id, actor.householdId, input.name, input.role, input.color, input.avatar,
         hashCredential(input.credential), credentialType,
-        maxOrder + 1, input.grants ? JSON.stringify(input.grants) : null, now(),
+        maxOrder + 1, input.grants ? JSON.stringify(input.grants) : null,
+        input.role === "child" ? (input.uiLevel ?? "little") : null, now(),
       );
       recordAudit(db, actor.householdId, actor, "member", id, "create",
         `${actor.name} added ${input.name} to the family`);
@@ -74,9 +75,10 @@ export const membersModule: CoreModule = {
         reply.code(404).send({ error: "Member not found" });
         return;
       }
-      db.prepare("UPDATE members SET name = ?, role = ?, color = ?, avatar = ?, grants_json = ? WHERE id = ?").run(
+      db.prepare("UPDATE members SET name = ?, role = ?, color = ?, avatar = ?, grants_json = ?, ui_level = ? WHERE id = ?").run(
         patch.name ?? row.name, patch.role ?? row.role, patch.color ?? row.color, patch.avatar ?? row.avatar,
-        patch.grants !== undefined ? JSON.stringify(patch.grants) : row.grants_json, id,
+        patch.grants !== undefined ? JSON.stringify(patch.grants) : row.grants_json,
+        patch.uiLevel !== undefined ? patch.uiLevel : row.ui_level, id,
       );
       if (patch.credential) {
         const role = patch.role ?? row.role;

@@ -5,7 +5,7 @@ import crypto from "node:crypto";
 
 export type Db = Database.Database;
 
-const SCHEMA_VERSION = 7;
+const SCHEMA_VERSION = 8;
 
 const SCHEMA = /* sql */ `
 CREATE TABLE households (
@@ -290,6 +290,10 @@ function migrate(db: Db) {
       step_index INTEGER NOT NULL,
       PRIMARY KEY (task_id, occurrence_date, step_index)
     );`);
+  }
+  if (version < 8) {
+    // Kid UI tiers: 'little' (Fisher-Price scale) or 'teen' (standard UI).
+    db.exec("ALTER TABLE members ADD COLUMN ui_level TEXT;");
   }
   db.pragma(`user_version = ${SCHEMA_VERSION}`);
 }

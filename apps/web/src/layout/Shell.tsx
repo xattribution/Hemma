@@ -35,7 +35,7 @@ export function Shell({ me }: { me: Extract<Me, { kind: "member" }> }) {
   }, [menuOpen]);
 
   return (
-    <div className="mx-auto flex min-h-dvh max-w-6xl flex-col">
+    <div className="shell-frame mx-auto flex min-h-dvh max-w-7xl flex-col">
       <header className="flex items-center justify-between px-4 pb-2 pt-4 sm:px-6">
         <div className="flex items-center gap-2">
           <span className="text-2xl">🏡</span>

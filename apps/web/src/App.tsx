@@ -13,6 +13,7 @@ import { ListsPage } from "./features/lists/ListsPage";
 import { DashboardPage } from "./features/dashboard/DashboardPage";
 import { HistoryPage } from "./features/history/HistoryPage";
 import { SettingsPage } from "./features/settings/SettingsPage";
+import { KidApp } from "./features/kid/KidApp";
 
 export function App() {
   const qc = useQueryClient();
@@ -57,6 +58,15 @@ export function App() {
         <Routes>
           <Route path="*" element={<DashboardPage />} />
         </Routes>
+      </WsProvider>
+    );
+  }
+
+  // Little kids get their own Fisher-Price-scale app: giant targets, no menus.
+  if (me.data.member.role === "child" && me.data.member.uiLevel === "little") {
+    return (
+      <WsProvider enabled>
+        <KidApp me={me.data} />
       </WsProvider>
     );
   }

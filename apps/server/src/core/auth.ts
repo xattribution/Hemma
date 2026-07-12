@@ -40,6 +40,7 @@ export interface MemberRow {
   sort_order: number;
   credential_type: CredentialType;
   grants_json: string | null;
+  ui_level: "little" | "teen" | null;
 }
 
 export function grantsOf(row: Pick<MemberRow, "grants_json">): Grant[] {
@@ -79,6 +80,7 @@ export function toMember(row: MemberRow): Member {
     sortOrder: row.sort_order,
     credentialType: row.credential_type,
     grants: grantsOf(row),
+    uiLevel: row.ui_level ?? null,
   };
 }
 
