@@ -56,7 +56,11 @@ export function TasksPage({ me }: { me: Extract<Me, { kind: "member" }> }) {
                   <span className="font-extrabold text-ink-soft">Up for grabs</span>
                 </>
               )}
-              <span className="ml-auto text-xs font-bold text-ink-soft">
+              <span className="ml-auto flex items-center gap-1.5 text-xs font-bold text-ink-soft">
+                {(() => {
+                  const pts = columnTasks.filter((t) => t.completed).reduce((sum, t) => sum + (t.points ?? 0), 0);
+                  return pts > 0 ? <span className="rounded-full bg-sun/20 px-1.5 py-0.5 text-sun">★ {pts} today</span> : null;
+                })()}
                 {columnTasks.filter((t) => t.completed).length}/{columnTasks.length}
               </span>
             </div>
@@ -77,6 +81,11 @@ export function TasksPage({ me }: { me: Extract<Me, { kind: "member" }> }) {
                   </button>
                   <div className="min-w-0 flex-1">
                     <p className={`truncate text-sm font-bold ${task.completed ? "line-through" : ""}`}>{task.title}</p>
+                    {task.steps.length > 0 && !task.completed && (
+                      <p className="truncate text-[11px] font-semibold text-ink-soft">
+                        {task.steps.map((step, i) => `${i + 1}. ${step}`).join("  ")}
+                      </p>
+                    )}
                     <p className="text-[11px] font-semibold text-ink-soft">
                       {task.repeat === "daily" ? "Every day" : task.repeat === "weekdays" ? "Weekdays" : task.repeat ? "Weekly" : "One-time"}
                       {task.points ? (
@@ -146,6 +155,7 @@ function TaskModal({ task, members, onClose }: { task: Task | null; members: Mem
   const [assigneeId, setAssigneeId] = useState<string | null>(task?.assigneeId ?? null);
   const [repeat, setRepeat] = useState<Repeat>((task?.repeat as Repeat) ?? "daily");
   const [points, setPoints] = useState(task?.points?.toString() ?? "");
+  const [steps, setSteps] = useState((task?.steps ?? []).join("\n"));
   const busy = mutations.create.isPending || mutations.update.isPending;
 
   const submit = (e: React.FormEvent) => {
@@ -155,6 +165,7 @@ function TaskModal({ task, members, onClose }: { task: Task | null; members: Mem
       assigneeId, dueAt: task?.dueAt ?? null,
       repeat: repeat === "" ? null : repeat,
       points: points ? Number(points) : null,
+      steps: steps.split("\n").map((l) => l.trim()).filter(Boolean),
     };
     const options = { onSuccess: onClose, onError: (err: Error) => showToast(err.message, "error") };
     if (task) mutations.update.mutate({ id: task.id, ...input }, options);
@@ -206,6 +217,11 @@ function TaskModal({ task, members, onClose }: { task: Task | null; members: Mem
             <input className={inputCls} type="number" min={0} max={1000} value={points}
               onChange={(e) => setPoints(e.target.value)} placeholder="5" />
           </div>
+        </div>
+        <div>
+          <label className={labelCls}>Steps (one per line — shows inside the chore)</label>
+          <textarea className={`${inputCls} min-h-20 text-sm`} value={steps} onChange={(e) => setSteps(e.target.value)}
+            placeholder={"vacuum the rug\npick up toys\nfluff the pillows"} />
         </div>
         <div className="flex items-center justify-between pt-1">
           {task ? (

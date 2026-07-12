@@ -4,6 +4,7 @@ import { Check, ChevronDown, ChevronLeft, ChevronRight, ChevronUp, Plus } from "
 import type { EventInstance } from "@coord/shared";
 import { useEventsRange, useMembers, useTaskMutations, useTasks } from "../../api/queries";
 import { PluginSlot } from "../../plugins/registry";
+import { FullscreenButton } from "../../components/FullscreenButton";
 import { Avatar } from "../../components/Avatar";
 import { ghostBtn, primaryBtn } from "../../components/Modal";
 import {
@@ -38,6 +39,7 @@ export function CalendarPage() {
       <div className="flex flex-wrap items-center gap-2">
         <h2 className="mr-auto text-xl font-extrabold">{viewTitle(view, anchor)}</h2>
         <PluginSlot slot="calendar.toolbar" />
+        <FullscreenButton />
         <div className="flex rounded-xl bg-card p-0.5 shadow-card">
           {(["month", "week", "day"] as const).map((v) => (
             <button key={v} type="button" onClick={() => go(v, anchor)}

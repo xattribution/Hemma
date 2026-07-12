@@ -9,7 +9,7 @@ import { config } from "../config.js";
 
 export const SESSION_COOKIE = "coord_session";
 /** How long a display acts as a verified member before dropping back to read-only. */
-export const ELEVATION_MS = 3 * 60_000;
+export const ELEVATION_MS = 60_000;
 
 // ---------- Credential hashing (scrypt — no native deps) ----------
 

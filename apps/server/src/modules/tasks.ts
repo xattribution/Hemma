@@ -22,6 +22,7 @@ interface TaskRow {
   due_at: number | null;
   repeat: string | null;
   points: number | null;
+  steps_json: string | null;
   created_by: string | null;
 }
 
@@ -62,6 +63,7 @@ export function listTasksFor(db: Db, householdId: string, isoDate: string, tz: s
       dueAt: row.due_at,
       repeat: row.repeat,
       points: row.points,
+      steps: row.steps_json ? (JSON.parse(row.steps_json) as string[]) : [],
       createdBy: row.created_by,
       occurrenceDate: recurring ? isoDate : null,
       dueToday: recurring ? true : row.due_at === null || isoDateOf(row.due_at, tz) <= isoDate,
@@ -123,10 +125,11 @@ export const tasksModule: CoreModule = {
       if (!input) return;
       const id = uid();
       db.prepare(
-        `INSERT INTO tasks (id, household_id, title, notes, icon, kind, assignee_id, due_at, repeat, points, created_by, created_at)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        `INSERT INTO tasks (id, household_id, title, notes, icon, kind, assignee_id, due_at, repeat, points, steps_json, created_by, created_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       ).run(id, access.householdId, input.title, input.notes, input.icon, input.kind,
-        input.assigneeId, input.dueAt, input.repeat, input.points, access.memberId, now());
+        input.assigneeId, input.dueAt, input.repeat, input.points,
+        input.steps.length ? JSON.stringify(input.steps) : null, access.memberId, now());
       recordAudit(db, access.householdId, actorOf(access), "task", id, "create", `${access.name} added "${input.title}"`);
       bus.emit("task.created", { taskId: id, title: input.title, actor: actorOf(access) });
       reply.code(201);
@@ -145,13 +148,14 @@ export const tasksModule: CoreModule = {
         return;
       }
       db.prepare(
-        "UPDATE tasks SET title = ?, notes = ?, icon = ?, kind = ?, assignee_id = ?, due_at = ?, repeat = ?, points = ? WHERE id = ?",
+        "UPDATE tasks SET title = ?, notes = ?, icon = ?, kind = ?, assignee_id = ?, due_at = ?, repeat = ?, points = ?, steps_json = ? WHERE id = ?",
       ).run(
         patch.title ?? row.title, patch.notes ?? row.notes, patch.icon ?? row.icon, patch.kind ?? row.kind,
         patch.assigneeId !== undefined ? patch.assigneeId : row.assignee_id,
         patch.dueAt !== undefined ? patch.dueAt : row.due_at,
         patch.repeat !== undefined ? patch.repeat : row.repeat,
         patch.points !== undefined ? patch.points : row.points,
+        patch.steps !== undefined ? (patch.steps.length ? JSON.stringify(patch.steps) : null) : row.steps_json,
         id,
       );
       recordAudit(db, access.householdId, actorOf(access), "task", id, "update",

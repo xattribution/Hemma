@@ -1,18 +1,25 @@
 import { useState } from "react";
-import { Moon, Sun } from "lucide-react";
+
+const THEMES = [
+  { id: "light", icon: "☀️", label: "Light" },
+  { id: "midnight", icon: "🌙", label: "Midnight" },
+  { id: "forest", icon: "🌲", label: "Forest" },
+  { id: "plum", icon: "🍇", label: "Plum" },
+] as const;
 
 export function ThemeToggle() {
-  const [dark, setDark] = useState(() => document.documentElement.dataset.theme === "dark");
-  const toggle = () => {
-    const next = !dark;
-    setDark(next);
-    document.documentElement.dataset.theme = next ? "dark" : "";
-    localStorage.setItem("coord.theme", next ? "dark" : "light");
+  const [theme, setTheme] = useState(() => document.documentElement.dataset.theme || "light");
+  const current = THEMES.find((t) => t.id === theme) ?? THEMES[0];
+  const cycle = () => {
+    const next = THEMES[(THEMES.findIndex((t) => t.id === current.id) + 1) % THEMES.length]!;
+    setTheme(next.id);
+    document.documentElement.dataset.theme = next.id === "light" ? "" : next.id;
+    localStorage.setItem("coord.theme", next.id);
   };
   return (
-    <button type="button" onClick={toggle} title={dark ? "Light mode" : "Dark mode"}
-      className="rounded-xl bg-card p-2 text-ink-soft shadow-card transition hover:text-ink active:scale-95">
-      {dark ? <Sun size={18} /> : <Moon size={18} />}
+    <button type="button" onClick={cycle} title={`Theme: ${current.label} — tap to change`}
+      className="rounded-xl bg-card px-2.5 py-2 text-base shadow-card transition active:scale-95">
+      {current.icon}
     </button>
   );
 }

@@ -14,6 +14,7 @@ import { MonthView } from "../calendar/MonthView";
 import { DayModal } from "../calendar/DayModal";
 import { viewRange } from "../calendar/dates";
 import { ElevationProvider, useElevation } from "./elevation";
+import { FullscreenButton } from "../../components/FullscreenButton";
 
 /**
  * The always-on display view (kitchen, living room, bedroom…). What it shows
@@ -47,11 +48,14 @@ export function DashboardPage() {
             <h1 className="text-2xl font-extrabold sm:text-3xl">🏡 {me.data.household.name}</h1>
             <p className="font-semibold text-ink-soft">{format(now, "EEEE, MMMM d")}</p>
           </div>
-          <div className="text-right">
+          <div className="flex items-start gap-3 text-right">
+            <FullscreenButton />
+            <div>
             <p className="text-4xl font-extrabold tabular-nums sm:text-5xl">{format(now, "h:mm")}</p>
             {me.data.kind === "member" && (
               <Link to="/calendar" className="text-sm font-bold text-coral hover:underline">← back to app</Link>
             )}
+            </div>
           </div>
         </header>
 
@@ -223,7 +227,14 @@ function DisplayCards({ config }: { config: DisplayConfig }) {
                       }`}>
                         {task.completed ? <Check size={16} /> : <span className="text-xs">{task.icon}</span>}
                       </span>
-                      <span className={`font-bold ${task.completed ? "line-through" : ""}`}>{task.title}</span>
+                      <span className="min-w-0">
+                        <span className={`block font-bold ${task.completed ? "line-through" : ""}`}>{task.title}</span>
+                        {task.steps.length > 0 && !task.completed && (
+                          <span className="block truncate text-xs font-semibold text-ink-soft">
+                            {task.steps.join(" → ")}
+                          </span>
+                        )}
+                      </span>
                     </button>
                   ))}
                 </div>

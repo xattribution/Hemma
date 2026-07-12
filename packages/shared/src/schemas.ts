@@ -176,6 +176,8 @@ export const taskInputSchema = z.object({
   /** For recurring chores: "daily" | "weekdays" | comma list of weekday numbers 0-6 (Sun=0). */
   repeat: z.string().max(40).nullable().default(null),
   points: z.number().int().min(0).max(1000).nullable().default(null),
+  /** Sub-steps shown inside the one chore ("vacuum", "fluff pillows", …). */
+  steps: z.array(z.string().trim().min(1).max(120)).max(20).default([]),
 });
 export type TaskInput = z.infer<typeof taskInputSchema>;
 
