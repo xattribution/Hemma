@@ -12,6 +12,12 @@ services:
     build:
       context: ../../apps/relay
     restart: unless-stopped
+    # Using your own reverse proxy (Nginx Proxy Manager, Traefik…) instead of
+    # the bundled Caddy? Uncomment to publish the relay port, proxy
+    # https://your-domain → http://<host>:8790, and start only this service:
+    #   docker compose up -d --build relay
+    # ports:
+    #   - "8790:8790"
 
   caddy:
     image: caddy:2
