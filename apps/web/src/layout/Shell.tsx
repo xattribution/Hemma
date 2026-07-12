@@ -1,7 +1,9 @@
+import { useEffect, useRef, useState } from "react";
 import { NavLink, Outlet } from "react-router";
-import { CalendarDays, ClipboardList, History, ListChecks, Settings } from "lucide-react";
+import { CalendarDays, ClipboardList, History, ListChecks, LogOut, Settings, UsersRound } from "lucide-react";
 import type { Me } from "@coord/shared";
 import { Avatar } from "../components/Avatar";
+import { SwitchPersonModal } from "../components/SwitchPersonModal";
 import { useLogout } from "../api/queries";
 
 const tabs = [
@@ -14,6 +16,18 @@ const tabs = [
 
 export function Shell({ me }: { me: Extract<Me, { kind: "member" }> }) {
   const logout = useLogout();
+  const [menuOpen, setMenuOpen] = useState(false);
+  const [switching, setSwitching] = useState(false);
+  const menuRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!menuOpen) return;
+    const close = (e: PointerEvent) => {
+      if (!menuRef.current?.contains(e.target as Node)) setMenuOpen(false);
+    };
+    document.addEventListener("pointerdown", close);
+    return () => document.removeEventListener("pointerdown", close);
+  }, [menuOpen]);
 
   return (
     <div className="mx-auto flex min-h-dvh max-w-6xl flex-col">
@@ -41,15 +55,42 @@ export function Shell({ me }: { me: Extract<Me, { kind: "member" }> }) {
             </NavLink>
           ))}
         </nav>
-        <button
-          type="button"
-          onClick={() => logout.mutate()}
-          title="Switch person"
-          className="transition hover:scale-105 active:scale-95"
-        >
-          <Avatar member={me.member} />
-        </button>
+        <div className="relative" ref={menuRef}>
+          <button
+            type="button"
+            onClick={() => setMenuOpen((open) => !open)}
+            title="Account"
+            aria-haspopup="menu"
+            aria-expanded={menuOpen}
+            className="transition hover:scale-105 active:scale-95"
+          >
+            <Avatar member={me.member} />
+          </button>
+          {menuOpen && (
+            <div role="menu" className="animate-slide-up absolute right-0 top-12 z-40 w-48 rounded-card bg-card p-1.5 shadow-card">
+              <div className="flex items-center gap-2 border-b-2 border-line px-2.5 pb-2 pt-1">
+                <Avatar member={me.member} size="sm" />
+                <div className="min-w-0">
+                  <p className="truncate text-sm font-extrabold">{me.member.name}</p>
+                  <p className="text-[11px] font-bold capitalize text-ink-soft">{me.member.role}</p>
+                </div>
+              </div>
+              <button type="button" role="menuitem"
+                onClick={() => { setMenuOpen(false); setSwitching(true); }}
+                className="flex w-full items-center gap-2 rounded-xl px-2.5 py-2 text-sm font-bold hover:bg-cream">
+                <UsersRound size={16} className="text-ink-soft" /> Switch person
+              </button>
+              <button type="button" role="menuitem"
+                onClick={() => { setMenuOpen(false); logout.mutate(); }}
+                className="flex w-full items-center gap-2 rounded-xl px-2.5 py-2 text-sm font-bold text-coral hover:bg-coral-soft">
+                <LogOut size={16} /> Sign out
+              </button>
+            </div>
+          )}
+        </div>
       </header>
+
+      {switching && <SwitchPersonModal currentId={me.member.id} onClose={() => setSwitching(false)} />}
 
       <main className="flex-1 px-3 pb-24 sm:px-6 sm:pb-8">
         <Outlet />

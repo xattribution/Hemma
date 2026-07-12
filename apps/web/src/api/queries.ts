@@ -35,7 +35,9 @@ export function useLogout() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: () => api("/api/auth/logout", { method: "POST" }),
-    onSuccess: () => qc.invalidateQueries(),
+    // Reset (not just invalidate): a 401 refetch keeps stale data around,
+    // which would leave the UI looking signed in.
+    onSuccess: () => qc.resetQueries(),
   });
 }
 

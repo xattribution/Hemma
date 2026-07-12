@@ -29,8 +29,10 @@ export function loadChecklists(db: Db, householdId: string, onlyPinned = false):
        ORDER BY c.sort_order, c.created_at`,
     )
     .all(householdId) as ChecklistRow[];
+  // Stable order — checked items keep their place (a strikethrough, not a
+  // jump to the bottom, which read as "it unchecked itself").
   const itemsStmt = db.prepare(
-    "SELECT id, text, checked, checked_by, quantity, store, sort_order FROM checklist_items WHERE checklist_id = ? ORDER BY checked, sort_order, created_at",
+    "SELECT id, text, checked, checked_by, quantity, store, sort_order FROM checklist_items WHERE checklist_id = ? ORDER BY sort_order, created_at",
   );
   return rows.map((row) => ({
     id: row.id,
