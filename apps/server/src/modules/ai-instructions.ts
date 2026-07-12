@@ -98,6 +98,27 @@ days, e.g. a packing list for the beach trip).
 - POST /api/checklists/:id/items/:itemId/toggle — check/uncheck (buying it)
 - DELETE /api/checklists/:id/items/:itemId
 
+## Extended family (federation)
+
+Families pair via one-time codes; everything between them is end-to-end
+encrypted. Sharing is per-list and revocable (revoked lists silently vanish
+on the other side).
+
+- GET /api/federation → connected peers + per-peer shared checklist ids
+- POST /api/federation/peers/:peerId/share { "checklistId": ... } — share
+- DELETE /api/federation/peers/:peerId/share/:checklistId — revoke
+- POST /api/federation/peers/:peerId/send-event { "eventId": ... } — copy an
+  event onto their calendar
+- GET /api/federation/shared → lists other families share with us;
+  POST /api/federation/shared/:peerId/:remoteId/toggle { "itemId": ... }
+"Send Jonathan's family the Costco list" = find the peer by name, find the
+list, POST share. Never share anything not explicitly asked for.
+
+## Meal planning
+
+Lists with kind "meal" are meal plans. Adding an item with "alsoGrocery":
+true mirrors it onto the default grocery list (first pinned shopping list).
+
 ## Family (parents rarely want you doing this unprompted)
 
 - POST /api/members, PATCH /api/members/:id, DELETE /api/members/:id

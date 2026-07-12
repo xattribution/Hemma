@@ -1,0 +1,9 @@
+{
+  "name": "@coord/relay",
+  "version": "0.1.0",
+  "type": "module",
+  "description": "Zero-knowledge rendezvous + mailbox relay for Coord family federation",
+  "scripts": {
+    "start": "node src/index.mjs"
+  }
+}

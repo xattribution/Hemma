@@ -6,7 +6,7 @@ import {
 } from "lucide-react";
 import type { Checklist, ChecklistItem, Me, StoreTag } from "@coord/shared";
 import { can } from "@coord/shared";
-import { useChecklistMutations, useChecklists, useEventsRange, useStores } from "../../api/queries";
+import { useChecklistMutations, useChecklists, useEventsRange, useSharedLists, useSharedListToggle, useStores } from "../../api/queries";
 import { Modal, ghostBtn, inputCls, labelCls, primaryBtn } from "../../components/Modal";
 import { showToast } from "../../components/Toast";
 
@@ -51,7 +51,54 @@ export function ListsPage({ me }: { me: Extract<Me, { kind: "member" }> }) {
         )}
       </div>
 
+      <SharedInLists stores={stores ?? []} />
+
       {editing && <ListModal list={editing === "new" ? null : editing} onClose={() => setEditing(null)} />}
+    </div>
+  );
+}
+
+/** Lists other families shared with us — live, checkable, and they simply
+    vanish if the other side revokes. */
+function SharedInLists({ stores }: { stores: StoreTag[] }) {
+  const { data: shared } = useSharedLists();
+  const toggle = useSharedListToggle();
+  if (!shared?.length) return null;
+  return (
+    <div className="space-y-3">
+      <h2 className="text-lg font-extrabold">Shared with us</h2>
+      <div className="grid gap-3 lg:grid-cols-2">
+        {shared.map(({ peerId, peerName, list }) => {
+          const done = list.items.filter((i) => i.checked).length;
+          return (
+            <div key={`${peerId}:${list.id}`} className="rounded-card border-2 border-dashed border-sky/40 bg-card p-4 shadow-card">
+              <div className="mb-2 flex items-center gap-2">
+                <span className="text-2xl">{list.icon}</span>
+                <h3 className="font-extrabold">{list.title}</h3>
+                <span className="text-xs font-bold text-ink-soft">{done}/{list.items.length}</span>
+                <span className="ml-auto rounded-full bg-sky/10 px-2 py-0.5 text-xs font-extrabold text-sky">
+                  from {peerName}
+                </span>
+              </div>
+              <ul className="space-y-1">
+                {list.items.map((item) => (
+                  <li key={item.id}>
+                    <label className="flex cursor-pointer items-center gap-2 rounded-lg px-1 py-1 hover:bg-cream">
+                      <input type="checkbox" checked={item.checked} className="h-5 w-5 accent-leaf"
+                        onChange={() => toggle.mutate({ peerId, remoteId: list.id, itemId: item.id })} />
+                      <span className={`flex-1 truncate text-sm font-semibold ${item.checked ? "text-ink-soft line-through" : ""}`}>
+                        {item.text}
+                        {item.quantity && <span className="ml-1 text-xs font-bold text-ink-soft">× {item.quantity}</span>}
+                      </span>
+                      {item.store && <StoreChip store={item.store} stores={stores} muted={item.checked} />}
+                    </label>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          );
+        })}
+      </div>
     </div>
   );
 }
@@ -162,7 +209,7 @@ function ListCard({ list, isParent, stores, onEdit }: { list: Checklist; isParen
         ))}
       </ul>
 
-      <AddItemRow listId={list.id} stores={stores} />
+      <AddItemRow listId={list.id} stores={stores} isMealPlan={list.kind === "meal"} />
 
       {tagging && (
         <Modal title={`Where is "${tagging.text}" from?`} onClose={() => setTagging(null)}>
@@ -179,19 +226,20 @@ function ListCard({ list, isParent, stores, onEdit }: { list: Checklist; isParen
 }
 
 /** Structured quick-add: item, optional quantity (defaults to 1), optional store quick-tag. */
-function AddItemRow({ listId, stores }: { listId: string; stores: StoreTag[] }) {
+function AddItemRow({ listId, stores, isMealPlan }: { listId: string; stores: StoreTag[]; isMealPlan?: boolean }) {
   const mutations = useChecklistMutations();
   const [text, setText] = useState("");
   const [quantity, setQuantity] = useState("");
   const [store, setStore] = useState("");
   const [newStore, setNewStore] = useState("");
+  const [alsoGrocery, setAlsoGrocery] = useState(true);
 
   const submit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!text.trim()) return;
     const chosenStore = store === "__new" ? newStore.trim() || null : store || null;
     mutations.addItem.mutate(
-      { listId, text: text.trim(), quantity: quantity.trim() || null, store: chosenStore },
+      { listId, text: text.trim(), quantity: quantity.trim() || null, store: chosenStore, alsoGrocery: isMealPlan && alsoGrocery },
       { onError: (err) => showToast(err.message, "error") },
     );
     setText("");
@@ -232,6 +280,13 @@ function AddItemRow({ listId, stores }: { listId: string; stores: StoreTag[] }) 
         {store === "__new" && (
           <input className={`${inputCls} w-32 px-2 py-0.5 text-xs`} placeholder="Store name" value={newStore} autoFocus
             onChange={(e) => setNewStore(e.target.value)} maxLength={40} />
+        )}
+        {isMealPlan && (
+          <label className="ml-auto flex items-center gap-1.5 text-xs font-extrabold text-ink-soft">
+            <input type="checkbox" className="h-4 w-4 accent-leaf" checked={alsoGrocery}
+              onChange={(e) => setAlsoGrocery(e.target.checked)} />
+            also add to groceries
+          </label>
         )}
       </div>
     </form>
@@ -323,13 +378,13 @@ function ShareModal({ list, onClose }: { list: Checklist; onClose: () => void })
 
 // ---------- Create / edit list ----------
 
-type ListType = "running" | "dated" | "event";
+type ListType = "running" | "dated" | "event" | "meal";
 
 function ListModal({ list, onClose }: { list: Checklist | null; onClose: () => void }) {
   const mutations = useChecklistMutations();
   const [title, setTitle] = useState(list?.title ?? "");
   const [icon, setIcon] = useState(list?.icon ?? "🛒");
-  const [type, setType] = useState<ListType>(list?.linkedEventId ? "event" : list?.needBy ? "dated" : "running");
+  const [type, setType] = useState<ListType>(list?.kind === "meal" ? "meal" : list?.linkedEventId ? "event" : list?.needBy ? "dated" : "running");
   const [needBy, setNeedBy] = useState(list?.needBy ? format(list.needBy, "yyyy-MM-dd") : "");
   const [eventId, setEventId] = useState(list?.linkedEventId ?? "");
 
@@ -347,7 +402,7 @@ function ListModal({ list, onClose }: { list: Checklist | null; onClose: () => v
   const submit = (e: React.FormEvent) => {
     e.preventDefault();
     const payload = {
-      title, icon, kind: "shopping" as const,
+      title, icon, kind: (type === "meal" ? "meal" : "shopping") as "meal" | "shopping",
       pinnedToDashboard: list?.pinnedToDashboard ?? false,
       needBy: type === "dated" && needBy ? new Date(`${needBy}T12:00:00`).getTime() : null,
       linkedEventId: type === "event" && eventId ? eventId : null,
@@ -376,7 +431,7 @@ function ListModal({ list, onClose }: { list: Checklist | null; onClose: () => v
         <div>
           <label className={labelCls}>What kind of list?</label>
           <div className="flex gap-2">
-            {([["running", "🔄 Running"], ["dated", "📆 Need by"], ["event", "🔗 For an event"]] as const).map(([key, label]) => (
+            {([["running", "🔄 Running"], ["dated", "📆 Need by"], ["event", "🔗 For an event"], ["meal", "🍽️ Meal plan"]] as const).map(([key, label]) => (
               <button key={key} type="button" onClick={() => setType(key)}
                 className={`flex-1 rounded-xl border-2 px-2 py-2 text-sm font-bold ${type === key ? "border-coral bg-coral-soft" : "border-line bg-card"}`}>
                 {label}
@@ -387,6 +442,7 @@ function ListModal({ list, onClose }: { list: Checklist | null; onClose: () => v
             {type === "running" && "Always going — add, check off, clear, repeat (like groceries)."}
             {type === "dated" && "Has a deadline; shows up in that day's summary."}
             {type === "event" && "Rides along with a calendar event (like a packing list)."}
+            {type === "meal" && "Plan meals & ingredients — items can hop onto the grocery list too."}
           </p>
         </div>
         {type === "dated" && (

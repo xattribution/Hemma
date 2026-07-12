@@ -11,6 +11,7 @@ import { PatternPad } from "../../components/PatternPad";
 import { showToast } from "../../components/Toast";
 import { usePush } from "./usePush";
 import { DisplaysSection } from "./DisplaysSection";
+import { FamiliesSection } from "./FamiliesSection";
 import { AiAccessSection } from "./AiAccessSection";
 
 export function SettingsPage({ me }: { me: Extract<Me, { kind: "member" }> }) {
@@ -22,6 +23,7 @@ export function SettingsPage({ me }: { me: Extract<Me, { kind: "member" }> }) {
       <FamilySection isParent={isParent} />
       <NotificationsSection />
       {isParent && <DisplaysSection />}
+      {isParent && <FamiliesSection />}
       {isParent && <AiAccessSection />}
       {isParent && <PluginsSection />}
       <section className="rounded-card bg-card p-4 shadow-card text-sm font-semibold text-ink-soft">

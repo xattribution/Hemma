@@ -21,6 +21,7 @@ import { remindersModule } from "./modules/reminders.js";
 import { dashboardModule } from "./modules/dashboard.js";
 import { auditModule } from "./modules/audit.js";
 import { integrationsModule } from "./modules/integrations.js";
+import { federationModule } from "./modules/federation.js";
 import { dailyQuotePlugin } from "./plugins/daily-quote.js";
 
 export interface BuildOptions {
@@ -81,6 +82,7 @@ export async function buildApp(options: BuildOptions): Promise<{ app: FastifyIns
     dashboardModule,
     auditModule,
     integrationsModule,
+    federationModule,
     dailyQuotePlugin,
   ];
   const host = await registerModules(

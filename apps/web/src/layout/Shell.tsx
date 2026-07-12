@@ -4,6 +4,7 @@ import { CalendarDays, ClipboardList, History, ListChecks, LogOut, Settings, Use
 import type { Me } from "@coord/shared";
 import { Avatar } from "../components/Avatar";
 import { SwitchPersonModal } from "../components/SwitchPersonModal";
+import { ThemeToggle } from "../components/ThemeToggle";
 import { useLogout } from "../api/queries";
 
 const tabs = [
@@ -55,6 +56,7 @@ export function Shell({ me }: { me: Extract<Me, { kind: "member" }> }) {
             </NavLink>
           ))}
         </nav>
+        <ThemeToggle />
         <div className="relative" ref={menuRef}>
           <button
             type="button"

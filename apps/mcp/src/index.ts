@@ -370,5 +370,52 @@ server.tool(
   },
 );
 
+// ---------- family federation ----------
+
+server.tool(
+  "list_families",
+  "Connected extended families (peers) and which of our lists are shared with each.",
+  {},
+  async () => ok(await api("/api/federation")),
+);
+
+server.tool(
+  "share_list_with_family",
+  "Share one of our lists with a connected family — e.g. 'send Jonathan's family the Costco list'. Only that list is shared; changes sync both ways.",
+  { family_name: z.string(), list: z.string().describe("list title or id") },
+  async ({ family_name, list }) => {
+    const fed = (await api("/api/federation")) as { peers: { id: string; name: string }[] };
+    const peer = fed.peers.find((p) => p.name.toLowerCase().includes(family_name.toLowerCase()));
+    if (!peer) throw new Error(`No connected family matching "${family_name}". Families: ${fed.peers.map((p) => p.name).join(", ") || "none"}`);
+    const target = await resolveList(list);
+    return ok(await api(`/api/federation/peers/${peer.id}/share`, { method: "POST", body: { checklistId: target.id } }));
+  },
+);
+
+server.tool(
+  "unshare_list_with_family",
+  "Stop sharing a list with a family — it silently disappears from their devices.",
+  { family_name: z.string(), list: z.string() },
+  async ({ family_name, list }) => {
+    const fed = (await api("/api/federation")) as { peers: { id: string; name: string }[] };
+    const peer = fed.peers.find((p) => p.name.toLowerCase().includes(family_name.toLowerCase()));
+    if (!peer) throw new Error(`No connected family matching "${family_name}"`);
+    const target = await resolveList(list);
+    return ok(await api(`/api/federation/peers/${peer.id}/share/${target.id}`, { method: "DELETE" }));
+  },
+);
+
+server.tool(
+  "send_event_to_family",
+  "Copy one of our calendar events onto a connected family's calendar (e.g. the wedding).",
+  { family_name: z.string(), event_id: z.string().describe("event id from list_events or search") },
+  async ({ family_name, event_id }) => {
+    const fed = (await api("/api/federation")) as { peers: { id: string; name: string }[] };
+    const peer = fed.peers.find((p) => p.name.toLowerCase().includes(family_name.toLowerCase()));
+    if (!peer) throw new Error(`No connected family matching "${family_name}"`);
+    return ok(await api(`/api/federation/peers/${peer.id}/send-event`, { method: "POST", body: { eventId: event_id } }));
+  },
+);
+
 await server.connect(new StdioServerTransport());
 console.error(`coord-mcp connected to ${BASE}`);

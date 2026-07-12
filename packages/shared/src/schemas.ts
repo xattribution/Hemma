@@ -193,7 +193,7 @@ export type Task = z.infer<typeof taskSchema>;
 
 // ---------- Checklists ----------
 
-export const checklistKindSchema = z.enum(["shopping", "checklist", "packing"]);
+export const checklistKindSchema = z.enum(["shopping", "checklist", "packing", "meal"]);
 
 export const checklistInputSchema = z.object({
   title: z.string().trim().min(1).max(80),
@@ -223,6 +223,8 @@ export const checklistItemInputSchema = z.object({
   quantity: z.string().trim().max(40).nullable().default(null),
   /** Store tag, e.g. "Costco" — "eggs from Costco" lands here. */
   store: z.string().trim().max(40).nullable().default(null),
+  /** Meal-plan lists: also drop this item onto the default grocery list. */
+  alsoGrocery: z.boolean().default(false),
 });
 export type ChecklistItemInput = z.infer<typeof checklistItemInputSchema>;
 

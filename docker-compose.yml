@@ -34,6 +34,15 @@ services:
       - caddy-data:/data
       - caddy-config:/config
 
+  # Optional: run the zero-knowledge federation relay (usually on a separate
+  # VPS, e.g. coord.tinbadger.com behind Caddy). RAM-only, no logs.
+  # relay:
+  #   image: node:22-slim
+  #   command: node /relay/src/index.mjs
+  #   volumes: [ "./apps/relay:/relay:ro" ]
+  #   ports: [ "8790:8790" ]
+  #   restart: unless-stopped
+
 volumes:
   coord-data:
   caddy-data:

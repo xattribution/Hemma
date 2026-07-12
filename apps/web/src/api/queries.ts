@@ -205,10 +205,10 @@ export function useChecklistMutations() {
       onSuccess: invalidate,
     }),
     addItem: useMutation({
-      mutationFn: (args: { listId: string; text: string; quantity: string | null; store: string | null }) =>
+      mutationFn: (args: { listId: string; text: string; quantity: string | null; store: string | null; alsoGrocery?: boolean }) =>
         api(`/api/checklists/${args.listId}/items`, {
           method: "POST",
-          body: { text: args.text, quantity: args.quantity, store: args.store },
+          body: { text: args.text, quantity: args.quantity, store: args.store, alsoGrocery: args.alsoGrocery ?? false },
         }),
       onSuccess: invalidate,
     }),
@@ -358,4 +358,28 @@ export function useApiTokenMutations() {
       onSuccess: invalidate,
     }),
   };
+}
+
+// ---------- Federation: lists shared with us ----------
+
+export interface SharedInList {
+  peerId: string;
+  peerName: string;
+  list: Checklist;
+}
+
+export const useSharedLists = () =>
+  useQuery({
+    queryKey: ["checklists", "shared-in"],
+    queryFn: () => api<{ shared: SharedInList[] }>("/api/federation/shared"),
+    select: (d) => d.shared,
+  });
+
+export function useSharedListToggle() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (args: { peerId: string; remoteId: string; itemId: string }) =>
+      api(`/api/federation/shared/${args.peerId}/${args.remoteId}/toggle`, { method: "POST", body: { itemId: args.itemId } }),
+    onSuccess: () => void qc.invalidateQueries({ queryKey: ["checklists"] }),
+  });
 }

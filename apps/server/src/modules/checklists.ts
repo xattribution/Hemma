@@ -180,6 +180,20 @@ export const checklistsModule: CoreModule = {
         "INSERT INTO checklist_items (id, checklist_id, text, quantity, store, sort_order, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)",
       ).run(itemId, id, input.text, input.quantity, input.store, maxOrder + 1, now());
       registerStore(input.store);
+      if (input.alsoGrocery) {
+        // Meal planning: mirror the ingredient onto the default grocery list
+        // (first pinned shopping list, else any shopping list).
+        const grocery = db.prepare(
+          `SELECT id FROM checklists WHERE household_id = ? AND deleted_at IS NULL AND kind = 'shopping' AND id != ?
+           ORDER BY pinned_to_dashboard DESC, created_at LIMIT 1`,
+        ).get(access.householdId, id) as { id: string } | undefined;
+        if (grocery) {
+          const gOrder = (db.prepare("SELECT COALESCE(MAX(sort_order), 0) AS m FROM checklist_items WHERE checklist_id = ?").get(grocery.id) as { m: number }).m;
+          db.prepare(
+            "INSERT INTO checklist_items (id, checklist_id, text, quantity, store, sort_order, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)",
+          ).run(uid(), grocery.id, input.text, input.quantity, input.store, gOrder + 1, now());
+        }
+      }
       recordAudit(db, access.householdId, actorOf(access), "checklist", id, "create",
         `${access.name} added "${input.text}"${input.store ? ` (${input.store})` : ""} to ${list.title}`);
       invalidateLists();

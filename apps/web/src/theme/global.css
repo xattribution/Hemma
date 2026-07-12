@@ -20,6 +20,16 @@
   --shadow-card: 0 2px 10px rgb(90 70 50 / 0.08);
 }
 
+:root[data-theme="dark"] {
+  --color-cream: #211c18;
+  --color-card: #2c2622;
+  --color-ink: #f1eae2;
+  --color-ink-soft: #a99e94;
+  --color-coral-soft: #46302a;
+  --color-line: #3d352e;
+  --shadow-card: 0 2px 10px rgb(0 0 0 / 0.4);
+}
+
 html {
   background: var(--color-cream);
   color: var(--color-ink);

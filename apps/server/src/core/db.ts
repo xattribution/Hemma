@@ -5,7 +5,7 @@ import crypto from "node:crypto";
 
 export type Db = Database.Database;
 
-const SCHEMA_VERSION = 4;
+const SCHEMA_VERSION = 5;
 
 const SCHEMA = /* sql */ `
 CREATE TABLE households (
@@ -247,6 +247,35 @@ function migrate(db: Db) {
   if (version < 4) {
     // Lists can be linked to a calendar event (they surface on its days).
     db.exec("ALTER TABLE checklists ADD COLUMN linked_event_id TEXT;");
+  }
+  if (version < 5) {
+    // Federation: paired families, what we share with each, what they share with us.
+    db.exec(/* sql */ `
+      CREATE TABLE peers (
+        id TEXT PRIMARY KEY,
+        name TEXT NOT NULL,
+        pubkey TEXT NOT NULL,
+        shared_key TEXT NOT NULL,
+        transport TEXT NOT NULL CHECK (transport IN ('direct','relay')),
+        peer_url TEXT,
+        outbox TEXT,
+        inbox TEXT,
+        status TEXT NOT NULL CHECK (status IN ('request','pending','active')),
+        created_at INTEGER NOT NULL
+      );
+      CREATE TABLE peer_shares (
+        peer_id TEXT NOT NULL REFERENCES peers(id),
+        checklist_id TEXT NOT NULL,
+        PRIMARY KEY (peer_id, checklist_id)
+      );
+      CREATE TABLE federated_lists (
+        peer_id TEXT NOT NULL REFERENCES peers(id),
+        remote_id TEXT NOT NULL,
+        payload_json TEXT NOT NULL,
+        updated_at INTEGER NOT NULL,
+        PRIMARY KEY (peer_id, remote_id)
+      );
+    `);
   }
   db.pragma(`user_version = ${SCHEMA_VERSION}`);
 }
