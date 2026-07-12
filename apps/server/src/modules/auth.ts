@@ -1,24 +1,40 @@
 import crypto from "node:crypto";
 import { z } from "zod";
-import { loginInputSchema, setupInputSchema, type Me } from "@coord/shared";
+import {
+  DEFAULT_DISPLAY_CONFIG, displayConfigSchema, loginInputSchema, setupInputSchema,
+  type DisplayConfig, type DisplayInfo, type Me,
+} from "@coord/shared";
 import type { CoreModule } from "../core/plugin-host.js";
 import {
   SESSION_COOKIE, clearLoginFailures, createSession, destroySession, hashCredential,
-  loginAllowed, recordLoginFailure, requireCan, sessionOf, setSessionCookie, toMember,
+  loginAllowed, recordLoginFailure, requireActor, sessionOf, setSessionCookie, toMember,
   verifyCredential, type MemberRow,
 } from "../core/auth.js";
 import { getHousehold } from "../core/household.js";
 import { parse } from "../core/http.js";
-import { now, uid } from "../core/db.js";
+import { now, uid, type Db } from "../core/db.js";
 import { recordAudit } from "../core/audit.js";
 
 const sha256 = (value: string) => crypto.createHash("sha256").update(value).digest("hex");
 
+interface DeviceRow {
+  id: string;
+  token: string | null;
+  label: string;
+  config_json: string | null;
+  created_at: number;
+}
+
+function deviceConfig(row: Pick<DeviceRow, "config_json">): DisplayConfig {
+  if (!row.config_json) return DEFAULT_DISPLAY_CONFIG;
+  return displayConfigSchema.parse(JSON.parse(row.config_json));
+}
+
 export const authModule: CoreModule = {
   id: "core.auth",
   name: "Family & sign-in",
-  description: "Household setup, member sign-in, kiosk device tokens.",
-  register({ app, db }) {
+  description: "Household setup, member sign-in, shared display links.",
+  register({ app, db, broadcast }) {
     app.get("/api/setup/status", () => ({ needed: !getHousehold(db) }));
 
     app.post("/api/setup", (req, reply) => {
@@ -88,57 +104,106 @@ export const authModule: CoreModule = {
         reply.code(401).send({ error: "Not signed in" });
         return;
       }
-      const me: Me =
-        session.kind === "member"
-          ? { kind: "member", member: toMember(session.member), household: { name: household.name, timezone: household.timezone } }
-          : { kind: "device", label: session.label, household: { name: household.name, timezone: household.timezone } };
+      const householdInfo = { name: household.name, timezone: household.timezone };
+      if (session.kind === "member") {
+        const me: Me = { kind: "member", member: toMember(session.member), household: householdInfo };
+        return me;
+      }
+      // Devices and agents both get the device shape; agents rarely call this.
+      let config = DEFAULT_DISPLAY_CONFIG;
+      if (session.kind === "device" && session.deviceTokenId) {
+        const row = db
+          .prepare("SELECT config_json FROM device_tokens WHERE id = ?")
+          .get(session.deviceTokenId) as { config_json: string | null } | undefined;
+        if (row) config = deviceConfig(row);
+      }
+      const me: Me = { kind: "device", label: session.label, config, household: householdInfo };
       return me;
     });
 
-    // ---- Kiosk device tokens ----
+    // ---- Shared display links (kitchen, living room, bedroom…) ----
+
+    const listDisplays = (): DisplayInfo[] =>
+      (db
+        .prepare("SELECT id, token, label, config_json, created_at FROM device_tokens WHERE revoked_at IS NULL ORDER BY created_at")
+        .all() as DeviceRow[]).map((row) => ({
+        id: row.id,
+        label: row.label,
+        token: row.token, // retrievable & shareable — family-trust model
+        config: deviceConfig(row),
+        createdAt: row.created_at,
+      }));
 
     app.post("/api/devices", (req, reply) => {
-      const member = requireCan(db, req, reply, "settings.manage");
-      if (!member) return;
-      const body = parse(z.object({ label: z.string().trim().min(1).max(60) }), req.body, reply);
+      const access = requireActor(db, req, reply, "settings.manage");
+      if (!access) return;
+      const body = parse(
+        z.object({ label: z.string().trim().min(1).max(60), config: displayConfigSchema.optional() }),
+        req.body, reply,
+      );
       if (!body) return;
       const token = crypto.randomBytes(24).toString("base64url");
+      const id = uid();
       db.prepare(
-        "INSERT INTO device_tokens (id, token_hash, label, created_by, created_at) VALUES (?, ?, ?, ?, ?)",
-      ).run(uid(), sha256(token), body.label, member.id, now());
-      recordAudit(db, member.household_id, { memberId: member.id, name: member.name }, "device", body.label, "create",
-        `${member.name} added display "${body.label}"`);
+        "INSERT INTO device_tokens (id, token_hash, token, label, config_json, created_by, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)",
+      ).run(id, sha256(token), token, body.label,
+        JSON.stringify(body.config ?? DEFAULT_DISPLAY_CONFIG), access.memberId, now());
+      recordAudit(db, access.householdId, { memberId: access.memberId, name: access.name }, "device", id, "create",
+        `${access.name} added display "${body.label}"`);
       reply.code(201);
-      return { token }; // shown once; only the hash is stored
+      return { id, token };
     });
 
     app.get("/api/devices", (req, reply) => {
-      if (!requireCan(db, req, reply, "settings.manage")) return;
-      const rows = db
-        .prepare("SELECT id, label, created_at FROM device_tokens WHERE revoked_at IS NULL ORDER BY created_at")
-        .all();
-      return { devices: rows };
+      if (!requireActor(db, req, reply, "settings.manage")) return;
+      return { devices: listDisplays() };
     });
 
-    app.delete("/api/devices/:id", (req, reply) => {
-      if (!requireCan(db, req, reply, "settings.manage")) return;
+    app.patch("/api/devices/:id", (req, reply) => {
+      const access = requireActor(db, req, reply, "settings.manage");
+      if (!access) return;
+      const body = parse(
+        z.object({ label: z.string().trim().min(1).max(60).optional(), config: displayConfigSchema.optional() }),
+        req.body, reply,
+      );
+      if (!body) return;
       const { id } = req.params as { id: string };
-      db.prepare("UPDATE device_tokens SET revoked_at = ? WHERE id = ?").run(now(), id);
+      const row = db.prepare("SELECT * FROM device_tokens WHERE id = ? AND revoked_at IS NULL").get(id) as DeviceRow | undefined;
+      if (!row) {
+        reply.code(404).send({ error: "Display not found" });
+        return;
+      }
+      db.prepare("UPDATE device_tokens SET label = ?, config_json = ? WHERE id = ?").run(
+        body.label ?? row.label,
+        body.config ? JSON.stringify(body.config) : row.config_json,
+        id,
+      );
+      // Signed-in kiosks pick up their new settings over the socket.
+      broadcast({ type: "invalidate", keys: ["me", "dashboard"] });
       return { ok: true };
     });
 
-    // A kiosk exchanges its device token for a device session cookie.
+    app.delete("/api/devices/:id", (req, reply) => {
+      if (!requireActor(db, req, reply, "settings.manage")) return;
+      const { id } = req.params as { id: string };
+      db.prepare("UPDATE device_tokens SET revoked_at = ? WHERE id = ?").run(now(), id);
+      db.prepare("DELETE FROM sessions WHERE device_token_id = ?").run(id); // sign the display out
+      broadcast({ type: "invalidate", keys: ["me"] });
+      return { ok: true };
+    });
+
+    // A display exchanges its link token for a session cookie.
     app.post("/api/auth/device", (req, reply) => {
       const body = parse(z.object({ token: z.string().min(10) }), req.body, reply);
       if (!body) return;
       const row = db
-        .prepare("SELECT label FROM device_tokens WHERE token_hash = ? AND revoked_at IS NULL")
-        .get(sha256(body.token)) as { label: string } | undefined;
+        .prepare("SELECT id, label FROM device_tokens WHERE token_hash = ? AND revoked_at IS NULL")
+        .get(sha256(body.token)) as { id: string; label: string } | undefined;
       if (!row) {
         reply.code(401).send({ error: "Unknown display token" });
         return;
       }
-      setSessionCookie(reply, createSession(db, null, "device", row.label));
+      setSessionCookie(reply, createSession(db, null, "device", row.label, row.id));
       return { label: row.label };
     });
   },

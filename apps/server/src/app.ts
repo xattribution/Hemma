@@ -10,7 +10,7 @@ import { createBus } from "./core/bus.js";
 import { createScheduler } from "./core/scheduler.js";
 import { createWsHub } from "./core/ws.js";
 import { registerModules, type CoreModule } from "./core/plugin-host.js";
-import { lookupSession, requireCan, requireSession, SESSION_COOKIE } from "./core/auth.js";
+import { requireAccess, requireActor, sessionOf, SESSION_COOKIE, lookupSession } from "./core/auth.js";
 import { parse } from "./core/http.js";
 import { authModule } from "./modules/auth.js";
 import { membersModule } from "./modules/members.js";
@@ -20,6 +20,7 @@ import { checklistsModule } from "./modules/checklists.js";
 import { remindersModule } from "./modules/reminders.js";
 import { dashboardModule } from "./modules/dashboard.js";
 import { auditModule } from "./modules/audit.js";
+import { integrationsModule } from "./modules/integrations.js";
 import { dailyQuotePlugin } from "./plugins/daily-quote.js";
 
 export interface BuildOptions {
@@ -79,6 +80,7 @@ export async function buildApp(options: BuildOptions): Promise<{ app: FastifyIns
     remindersModule,
     dashboardModule,
     auditModule,
+    integrationsModule,
     dailyQuotePlugin,
   ];
   const host = await registerModules(
@@ -87,14 +89,14 @@ export async function buildApp(options: BuildOptions): Promise<{ app: FastifyIns
   );
 
   app.get("/api/plugins", (req, reply) => {
-    if (!requireSession(db, req, reply)) return;
+    if (!requireAccess(db, req, reply)) return;
     return {
       plugins: host.registered.map((p) => ({ ...p, enabled: host.isEnabled(p.id) })),
     };
   });
 
   app.post("/api/plugins/:id/enabled", (req, reply) => {
-    if (!requireCan(db, req, reply, "settings.manage")) return;
+    if (!requireActor(db, req, reply, "settings.manage")) return;
     const body = parse(z.object({ enabled: z.boolean() }), req.body, reply);
     if (!body) return;
     const { id } = req.params as { id: string };

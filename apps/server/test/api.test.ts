@@ -261,6 +261,6 @@ describe("kiosk devices", () => {
       headers: { cookie: deviceCookie },
       payload: { title: "Nope", startAt: 0, endAt: 1, timezone: TZ },
     });
-    expect(forbidden.statusCode).toBe(401);
+    expect(forbidden.statusCode).toBe(403);
   });
 });

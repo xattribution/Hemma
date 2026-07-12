@@ -1,6 +1,6 @@
 import type { DashboardToday } from "@coord/shared";
 import type { CoreModule } from "../core/plugin-host.js";
-import { requireSession, toMember, type MemberRow } from "../core/auth.js";
+import { requireAccess, toMember, type MemberRow } from "../core/auth.js";
 import { getHousehold } from "../core/household.js";
 import { now } from "../core/db.js";
 import { isoDateOf, utcOfWall, wallPartsOf } from "../core/tz.js";
@@ -14,7 +14,7 @@ export const dashboardModule: CoreModule = {
   description: "The always-on family view: today at a glance.",
   register({ app, db }) {
     app.get("/api/dashboard/today", (req, reply) => {
-      if (!requireSession(db, req, reply)) return;
+      if (!requireAccess(db, req, reply)) return;
       const household = getHousehold(db)!;
       const tz = household.timezone;
       const nowMs = now();

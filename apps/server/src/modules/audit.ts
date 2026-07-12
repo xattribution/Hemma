@@ -1,6 +1,6 @@
 import { z } from "zod";
 import type { CoreModule } from "../core/plugin-host.js";
-import { requireMember } from "../core/auth.js";
+import { requireAccess } from "../core/auth.js";
 import { parse } from "../core/http.js";
 
 export const auditModule: CoreModule = {
@@ -9,8 +9,8 @@ export const auditModule: CoreModule = {
   description: "Remembers what happened — who did what, and when.",
   register({ app, db }) {
     app.get("/api/audit", (req, reply) => {
-      const member = requireMember(db, req, reply);
-      if (!member) return;
+      const access = requireAccess(db, req, reply);
+      if (!access) return;
       const query = parse(
         z.object({
           limit: z.coerce.number().int().min(1).max(500).default(100),
@@ -22,7 +22,7 @@ export const auditModule: CoreModule = {
       );
       if (!query) return;
       const where = ["household_id = ?"];
-      const params: unknown[] = [member.household_id];
+      const params: unknown[] = [access.householdId];
       if (query.entityType) {
         where.push("entity_type = ?");
         params.push(query.entityType);

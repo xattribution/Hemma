@@ -1,7 +1,7 @@
 import { z } from "zod";
 import webpush from "web-push";
 import type { CoreModule } from "../core/plugin-host.js";
-import { requireMember, requireSession } from "../core/auth.js";
+import { requireActor, requireMember } from "../core/auth.js";
 import { parse } from "../core/http.js";
 import { now, uid } from "../core/db.js";
 import { getHousehold } from "../core/household.js";
@@ -156,8 +156,8 @@ export const remindersModule: CoreModule = {
 
     // ---- Task reminder management (event reminders ride along with events) ----
     app.post("/api/tasks/:id/reminder", (req, reply) => {
-      const member = requireMember(db, req, reply);
-      if (!member) return;
+      const access = requireActor(db, req, reply, "task.manage");
+      if (!access) return;
       const body = parse(z.object({ offsetMinutes: z.number().int().min(0).max(60 * 24 * 14).nullable() }), req.body, reply);
       if (!body) return;
       const { id } = req.params as { id: string };
@@ -165,7 +165,7 @@ export const remindersModule: CoreModule = {
       if (body.offsetMinutes !== null) {
         db.prepare(
           "INSERT INTO reminders (id, household_id, entity_type, entity_id, offset_minutes, target) VALUES (?, ?, 'task', ?, ?, 'assignees')",
-        ).run(uid(), member.household_id, id, body.offsetMinutes);
+        ).run(uid(), access.householdId, id, body.offsetMinutes);
       }
       return { ok: true };
     });

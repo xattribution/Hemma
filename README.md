@@ -20,13 +20,24 @@ screen on iPhone and Android alike and runs full-screen on a kitchen display.
   4-digit PIN from an avatar picker; parents manage, kids do
 - **Chores & to-dos** — daily/weekday/weekend repeats, points, tap-to-complete,
   and one-tap **swap** ("you take dishes, I'll walk the dog")
-- **Lists** — shared shopping/packing lists with quantities ("Milk x2"),
-  live check-off from any device, pin to the dashboard
+- **Lists** — shared shopping/packing lists with quantities and **store tags**
+  ("Milk x2 @Costco"), tap-to-retag, per-store filters, optional **need-by
+  dates** that surface the list in that day's summary, live check-off from
+  any device, pin to displays
+- **Day summary hub** — tap any date for that day's events, chores and dated
+  lists in one panel, and add events right from it; today's chores live on
+  the calendar page too (collapsible)
 - **Reminders** — server-side scheduler with web-push notifications
   (iOS ≥ 16.4 installed PWA, Android, desktop) plus in-app toasts
-- **Kitchen dashboard** — kiosk mode for a wall tablet: today + tomorrow,
-  each kid's chores (tappable), pinned lists, a big clock; signs in once with
-  a display token and survives weeks unattended
+- **Displays** — kitchen, living room, bedroom: shareable links (copy button
+  + QR code to scan on the device), each display individually configured —
+  card dashboard or fullscreen interactive calendar, with events/chores/lists
+  toggles; signs in once and survives weeks unattended
+- **AI & API access** — bearer tokens for assistants and automations, a
+  bundled **MCP server** ([apps/mcp](apps/mcp/README.md)) for Claude and
+  other MCP clients, LLM-readable API docs at `/llms.txt`, and a
+  cross-entity search endpoint; everything an AI does shows up in History
+  under its name ("HAL added Eggs (Costco) to Groceries")
 - **History** — a searchable "what's been happening" feed (who completed,
   swapped, added, changed what — and when)
 - **Real-time everywhere** — WebSocket-driven updates land on every screen
@@ -113,10 +124,14 @@ account. Add everyone else in **Settings → Family**.
 - **iPhone/iPad:** Safari → Share → **Add to Home Screen**. Then open the app
   and enable reminders in Settings (iOS only allows push for installed PWAs).
 - **Android:** Chrome prompts to install, or ⋮ → Add to Home screen.
-- **Kitchen display:** Settings → Kitchen displays → create a display link and
-  open it once on the tablet. It stays signed in on the dashboard, updates
-  live, and refreshes itself nightly. Recommended: Fully Kiosk Browser
+- **Displays:** Settings → Displays → create a display, then open its link
+  (or scan its QR code) once on the tablet. It stays signed in, updates
+  live, and refreshes itself nightly. Pick per display what it shows —
+  dashboard cards or a fullscreen calendar. Recommended: Fully Kiosk Browser
   (Android) or Guided Access (iPad) to keep the screen on.
+- **AI assistant:** Settings → AI & API access → create a token, then hook up
+  the [MCP server](apps/mcp/README.md) or point any agent at the REST API
+  (instructions at `/llms.txt`).
 
 ## Tech
 

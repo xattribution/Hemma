@@ -5,7 +5,7 @@ import crypto from "node:crypto";
 
 export type Db = Database.Database;
 
-const SCHEMA_VERSION = 1;
+const SCHEMA_VERSION = 2;
 
 const SCHEMA = /* sql */ `
 CREATE TABLE households (
@@ -192,9 +192,29 @@ function migrate(db: Db) {
   const version = db.pragma("user_version", { simple: true }) as number;
   if (version < 1) {
     db.exec(SCHEMA);
-    db.pragma(`user_version = ${SCHEMA_VERSION}`);
   }
-  // Future migrations append here: if (version < 2) { ... }
+  if (version < 2) {
+    db.exec(/* sql */ `
+      -- Display links are retrievable/shareable (home-server trust model)
+      -- and carry per-display content settings.
+      ALTER TABLE device_tokens ADD COLUMN token TEXT;
+      ALTER TABLE device_tokens ADD COLUMN config_json TEXT;
+      ALTER TABLE sessions ADD COLUMN device_token_id TEXT;
+      -- Lists can have an optional "need by" date; items an optional store tag.
+      ALTER TABLE checklists ADD COLUMN need_by INTEGER;
+      ALTER TABLE checklist_items ADD COLUMN store TEXT;
+      -- Bearer tokens for AI/automation clients (MCP, scripts).
+      CREATE TABLE IF NOT EXISTS api_tokens (
+        id TEXT PRIMARY KEY,
+        token TEXT NOT NULL UNIQUE,
+        label TEXT NOT NULL,
+        created_by TEXT,
+        created_at INTEGER NOT NULL,
+        revoked_at INTEGER
+      );
+    `);
+  }
+  db.pragma(`user_version = ${SCHEMA_VERSION}`);
 }
 
 export const uid = () => crypto.randomUUID();

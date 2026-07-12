@@ -89,25 +89,25 @@ addTask("Water the plants", "🪴", "chore", null, "0", null, 5); // Sundays, up
 addTask("Sign Mia's permission slip", "✍️", "todo", sam, null, at(1, 8), null);
 
 // ---- Lists ----
-function addList(title: string, icon: string, kind: string, pinned: boolean, items: [string, string | null][]) {
+function addList(title: string, icon: string, kind: string, pinned: boolean, needBy: number | null, items: [string, string | null, string | null][]) {
   const id = uid();
   db.prepare(
-    "INSERT INTO checklists (id, household_id, title, icon, kind, pinned_to_dashboard, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)",
-  ).run(id, householdId, title, icon, kind, pinned ? 1 : 0, now());
-  items.forEach(([text, quantity], i) => {
+    "INSERT INTO checklists (id, household_id, title, icon, kind, pinned_to_dashboard, need_by, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+  ).run(id, householdId, title, icon, kind, pinned ? 1 : 0, needBy, now());
+  items.forEach(([text, quantity, store], i) => {
     db.prepare(
-      "INSERT INTO checklist_items (id, checklist_id, text, quantity, sort_order, created_at) VALUES (?, ?, ?, ?, ?, ?)",
-    ).run(uid(), id, text, quantity, i, now());
+      "INSERT INTO checklist_items (id, checklist_id, text, quantity, store, sort_order, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)",
+    ).run(uid(), id, text, quantity, store, i, now());
   });
   return id;
 }
 
-addList("Groceries", "🛒", "shopping", true, [
-  ["Milk", "2 gal"], ["Eggs", "1 dozen"], ["Bananas", null], ["Bread", null],
-  ["Pizza dough", "2"], ["Dog food", null],
+addList("Groceries", "🛒", "shopping", true, null, [
+  ["Milk", "2 gal", "Costco"], ["Eggs", "1 dozen", "Costco"], ["Bananas", null, null],
+  ["Bread", null, "Walmart"], ["Pizza dough", "2", null], ["Dog food", null, "Costco"],
 ]);
-addList("Beach trip packing", "🏖️", "packing", false, [
-  ["Sunscreen", null], ["Towels", "4"], ["Snacks", null], ["Sand toys", null],
+addList("Beach trip packing", "🏖️", "packing", false, at(5, 12), [
+  ["Sunscreen", null, "Walmart"], ["Towels", "4", null], ["Snacks", null, null], ["Sand toys", null, null],
 ]);
 
 console.log("Seeded demo family ✔");

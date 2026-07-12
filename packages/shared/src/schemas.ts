@@ -65,9 +65,35 @@ export const loginInputSchema = z.object({
   credential: z.string().min(1).max(72),
 });
 
+// ---------- Displays ----------
+
+/** What a shared display (kitchen tablet, living-room screen…) shows. */
+export const displayConfigSchema = z.object({
+  layout: z.enum(["dashboard", "calendar"]).default("dashboard"),
+  showEvents: z.boolean().default(true),
+  showChores: z.boolean().default(true),
+  showLists: z.boolean().default(true),
+});
+export type DisplayConfig = z.infer<typeof displayConfigSchema>;
+export const DEFAULT_DISPLAY_CONFIG: DisplayConfig = {
+  layout: "dashboard",
+  showEvents: true,
+  showChores: true,
+  showLists: true,
+};
+
+export interface DisplayInfo {
+  id: string;
+  label: string;
+  /** Retrievable — display links are shareable within the family. */
+  token: string | null;
+  config: DisplayConfig;
+  createdAt: number;
+}
+
 export type Me =
   | { kind: "member"; member: Member; household: { name: string; timezone: string } }
-  | { kind: "device"; label: string; household: { name: string; timezone: string } };
+  | { kind: "device"; label: string; config: DisplayConfig; household: { name: string; timezone: string } };
 
 // ---------- Events ----------
 
@@ -142,8 +168,18 @@ export const checklistInputSchema = z.object({
   icon: z.string().max(8).default("🛒"),
   kind: checklistKindSchema.default("shopping"),
   pinnedToDashboard: z.boolean().default(false),
+  /** Optional deadline (UTC ms) — the list surfaces in that day's summary. */
+  needBy: z.number().int().nullable().default(null),
 });
 export type ChecklistInput = z.infer<typeof checklistInputSchema>;
+
+export const checklistItemInputSchema = z.object({
+  text: z.string().trim().min(1).max(200),
+  quantity: z.string().trim().max(40).nullable().default(null),
+  /** Store tag, e.g. "Costco" — "eggs from Costco" lands here. */
+  store: z.string().trim().max(40).nullable().default(null),
+});
+export type ChecklistItemInput = z.infer<typeof checklistItemInputSchema>;
 
 export const checklistItemSchema = z.object({
   id: z.string(),
@@ -151,6 +187,7 @@ export const checklistItemSchema = z.object({
   checked: z.boolean(),
   checkedBy: z.string().nullable(),
   quantity: z.string().nullable(),
+  store: z.string().nullable(),
   sortOrder: z.number(),
 });
 export type ChecklistItem = z.infer<typeof checklistItemSchema>;

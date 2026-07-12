@@ -1,22 +1,24 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router";
-import { format } from "date-fns";
-import { Check } from "lucide-react";
-import { EVENT_CATEGORIES } from "@coord/shared";
-import { useChecklistMutations, useDashboard, useMe, useTaskMutations } from "../../api/queries";
+import { format, startOfMonth } from "date-fns";
+import { Check, ChevronLeft, ChevronRight } from "lucide-react";
+import { DEFAULT_DISPLAY_CONFIG, EVENT_CATEGORIES, type DisplayConfig } from "@coord/shared";
+import {
+  useChecklistMutations, useDashboard, useEventsRange, useMe, useMembers, useTaskMutations,
+} from "../../api/queries";
 import { Avatar } from "../../components/Avatar";
 import { PluginSlot } from "../../plugins/registry";
+import { MonthView } from "../calendar/MonthView";
+import { DayModal } from "../calendar/DayModal";
+import { viewRange } from "../calendar/dates";
 
 /**
- * The always-on kitchen display: today at a glance, big and touch-friendly.
- * Data flows in over the WebSocket; a daily reload keeps long-running
- * tablets fresh.
+ * The always-on display view (kitchen, living room, bedroom…). What it shows
+ * is controlled per-display from Settings → Displays: card dashboard or a
+ * fullscreen interactive calendar, with events/chores/lists toggles.
  */
 export function DashboardPage() {
-  const { data } = useDashboard();
   const me = useMe();
-  const tasks = useTaskMutations();
-  const lists = useChecklistMutations();
   const [now, setNow] = useState(new Date());
 
   useEffect(() => {
@@ -28,7 +30,9 @@ export function DashboardPage() {
     return () => { clearInterval(clock); clearInterval(reload); };
   }, []);
 
-  if (!data) {
+  const config: DisplayConfig = me.data?.kind === "device" ? me.data.config : DEFAULT_DISPLAY_CONFIG;
+
+  if (!me.data) {
     return <div className="flex min-h-dvh items-center justify-center text-5xl"><span className="animate-pop">🏡</span></div>;
   }
 
@@ -36,19 +40,76 @@ export function DashboardPage() {
     <div className="min-h-dvh bg-cream p-4 sm:p-6">
       <header className="mb-4 flex items-end justify-between">
         <div>
-          <h1 className="text-2xl font-extrabold sm:text-3xl">🏡 {data.household.name}</h1>
+          <h1 className="text-2xl font-extrabold sm:text-3xl">🏡 {me.data.household.name}</h1>
           <p className="font-semibold text-ink-soft">{format(now, "EEEE, MMMM d")}</p>
         </div>
         <div className="text-right">
           <p className="text-4xl font-extrabold tabular-nums sm:text-5xl">{format(now, "h:mm")}</p>
-          {me.data?.kind === "member" && (
+          {me.data.kind === "member" && (
             <Link to="/calendar" className="text-sm font-bold text-coral hover:underline">← back to app</Link>
           )}
         </div>
       </header>
 
-      <div className="grid gap-4 lg:grid-cols-3">
-        {/* Today + tomorrow */}
+      {config.layout === "calendar" ? <DisplayCalendar /> : <DisplayCards config={config} />}
+    </div>
+  );
+}
+
+/** Fullscreen interactive calendar layout — tap a day for its summary. */
+function DisplayCalendar() {
+  const [anchor, setAnchor] = useState(() => startOfMonth(new Date()));
+  const [day, setDay] = useState<Date | null>(null);
+  const range = useMemo(() => viewRange("month", anchor), [anchor.getTime()]);
+  const { data: instances } = useEventsRange(range.start, range.end);
+  const { data: members } = useMembers();
+
+  return (
+    <div>
+      <div className="mb-2 flex items-center gap-2">
+        <h2 className="mr-auto text-xl font-extrabold">{format(anchor, "MMMM yyyy")}</h2>
+        <button type="button" aria-label="Previous month" className="rounded-xl bg-card p-2 shadow-card"
+          onClick={() => setAnchor((a) => new Date(a.getFullYear(), a.getMonth() - 1, 1))}>
+          <ChevronLeft size={20} />
+        </button>
+        <button type="button" className="rounded-xl bg-card px-3 py-2 text-sm font-extrabold shadow-card"
+          onClick={() => setAnchor(startOfMonth(new Date()))}>
+          Today
+        </button>
+        <button type="button" aria-label="Next month" className="rounded-xl bg-card p-2 shadow-card"
+          onClick={() => setAnchor((a) => new Date(a.getFullYear(), a.getMonth() + 1, 1))}>
+          <ChevronRight size={20} />
+        </button>
+      </div>
+      <MonthView
+        anchor={anchor}
+        instances={instances ?? []}
+        members={members ?? []}
+        onDayClick={(d) => setDay(d)}
+        onEventClick={(instance) => setDay(new Date(instance.occurrenceStart))}
+      />
+      {day && (
+        <DayModal day={day} members={members ?? []} canManageEvents={false} onClose={() => setDay(null)} />
+      )}
+    </div>
+  );
+}
+
+/** Card dashboard layout — today, chores, pinned lists, plugin cards. */
+function DisplayCards({ config }: { config: DisplayConfig }) {
+  const { data } = useDashboard();
+  const tasks = useTaskMutations();
+  const lists = useChecklistMutations();
+
+  if (!data) {
+    return <div className="flex h-64 items-center justify-center text-5xl"><span className="animate-pop">🏡</span></div>;
+  }
+
+  const columns = [config.showEvents, config.showChores, config.showLists].filter(Boolean).length || 1;
+
+  return (
+    <div className={`grid gap-4 ${columns === 1 ? "" : columns === 2 ? "lg:grid-cols-2" : "lg:grid-cols-3"}`}>
+      {config.showEvents && (
         <section className="rounded-card bg-card p-4 shadow-card">
           <h2 className="mb-2 text-sm font-extrabold uppercase tracking-wide text-ink-soft">Today</h2>
           <div className="space-y-2">
@@ -81,8 +142,9 @@ export function DashboardPage() {
             </>
           )}
         </section>
+      )}
 
-        {/* Chores by member — tap to complete right on the tablet */}
+      {config.showChores && (
         <section className="rounded-card bg-card p-4 shadow-card">
           <h2 className="mb-2 text-sm font-extrabold uppercase tracking-wide text-ink-soft">Chores</h2>
           <div className="space-y-3">
@@ -115,13 +177,19 @@ export function DashboardPage() {
             )}
           </div>
         </section>
+      )}
 
-        {/* Pinned lists + plugin cards */}
+      {config.showLists && (
         <section className="space-y-4">
           {data.pinnedLists.map((list) => (
             <div key={list.id} className="rounded-card bg-card p-4 shadow-card">
               <h2 className="mb-2 text-sm font-extrabold uppercase tracking-wide text-ink-soft">
                 {list.icon} {list.title}
+                {list.needBy !== null && (
+                  <span className="ml-2 rounded-full bg-sun/20 px-2 py-0.5 text-[10px] font-extrabold normal-case text-ink">
+                    need by {format(list.needBy, "EEE")}
+                  </span>
+                )}
               </h2>
               <ul className="space-y-1">
                 {list.items.map((item) => (
@@ -132,6 +200,7 @@ export function DashboardPage() {
                       <span className={`font-semibold ${item.checked ? "text-ink-soft line-through" : ""}`}>
                         {item.text}
                         {item.quantity && <span className="ml-1 text-xs font-bold text-ink-soft">× {item.quantity}</span>}
+                        {item.store && <span className="ml-1.5 rounded-full bg-sky/10 px-1.5 text-[10px] font-extrabold text-sky">{item.store}</span>}
                       </span>
                     </label>
                   </li>
@@ -141,7 +210,7 @@ export function DashboardPage() {
           ))}
           <PluginSlot slot="dashboard.card" />
         </section>
-      </div>
+      )}
     </div>
   );
 }

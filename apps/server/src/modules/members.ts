@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { memberInputSchema } from "@coord/shared";
 import type { CoreModule } from "../core/plugin-host.js";
-import { hashCredential, requireCan, requireSession, toMember, type MemberRow } from "../core/auth.js";
+import { hashCredential, requireAccess, requireActor, toMember, type MemberRow } from "../core/auth.js";
 import { actorOf } from "../core/actor.js";
 import { parse } from "../core/http.js";
 import { now, uid } from "../core/db.js";
@@ -15,7 +15,7 @@ export const membersModule: CoreModule = {
   description: "Who's in the family — names, colors, avatars, roles.",
   register({ app, db, bus }) {
     app.get("/api/members", (req, reply) => {
-      if (!requireSession(db, req, reply)) return;
+      if (!requireAccess(db, req, reply)) return;
       const rows = db
         .prepare("SELECT * FROM members WHERE deleted_at IS NULL ORDER BY sort_order, created_at")
         .all() as MemberRow[];
@@ -23,7 +23,7 @@ export const membersModule: CoreModule = {
     });
 
     app.post("/api/members", (req, reply) => {
-      const actor = requireCan(db, req, reply, "member.manage");
+      const actor = requireActor(db, req, reply, "member.manage");
       if (!actor) return;
       const input = parse(memberInputSchema, req.body, reply);
       if (!input) return;
@@ -37,19 +37,19 @@ export const membersModule: CoreModule = {
         `INSERT INTO members (id, household_id, name, role, color, avatar, credential_hash, credential_type, sort_order, created_at)
          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       ).run(
-        id, actor.household_id, input.name, input.role, input.color, input.avatar,
+        id, actor.householdId, input.name, input.role, input.color, input.avatar,
         hashCredential(input.credential), input.role === "child" ? "pin" : "password",
         maxOrder + 1, now(),
       );
-      recordAudit(db, actor.household_id, actorOf(actor), "member", id, "create",
+      recordAudit(db, actor.householdId, actor, "member", id, "create",
         `${actor.name} added ${input.name} to the family`);
-      bus.emit("member.updated", { memberId: id, actor: actorOf(actor) });
+      bus.emit("member.updated", { memberId: id, actor: actor });
       reply.code(201);
       return { id };
     });
 
     app.patch("/api/members/:id", (req, reply) => {
-      const actor = requireCan(db, req, reply, "member.manage");
+      const actor = requireActor(db, req, reply, "member.manage");
       if (!actor) return;
       const patch = parse(memberPatchSchema, req.body, reply);
       if (!patch) return;
@@ -67,17 +67,17 @@ export const membersModule: CoreModule = {
           hashCredential(patch.credential), (patch.role ?? row.role) === "child" ? "pin" : "password", id,
         );
       }
-      recordAudit(db, actor.household_id, actorOf(actor), "member", id, "update",
+      recordAudit(db, actor.householdId, actor, "member", id, "update",
         `${actor.name} updated ${patch.name ?? row.name}`);
-      bus.emit("member.updated", { memberId: id, actor: actorOf(actor) });
+      bus.emit("member.updated", { memberId: id, actor: actor });
       return { ok: true };
     });
 
     app.delete("/api/members/:id", (req, reply) => {
-      const actor = requireCan(db, req, reply, "member.manage");
+      const actor = requireActor(db, req, reply, "member.manage");
       if (!actor) return;
       const { id } = req.params as { id: string };
-      if (id === actor.id) {
+      if (id === actor.memberId) {
         reply.code(400).send({ error: "You can't remove yourself" });
         return;
       }
@@ -88,9 +88,9 @@ export const membersModule: CoreModule = {
       }
       db.prepare("UPDATE members SET deleted_at = ? WHERE id = ?").run(now(), id);
       db.prepare("DELETE FROM sessions WHERE member_id = ?").run(id);
-      recordAudit(db, actor.household_id, actorOf(actor), "member", id, "delete",
+      recordAudit(db, actor.householdId, actor, "member", id, "delete",
         `${actor.name} removed ${row.name} from the family`);
-      bus.emit("member.updated", { memberId: id, actor: actorOf(actor) });
+      bus.emit("member.updated", { memberId: id, actor: actor });
       return { ok: true };
     });
   },

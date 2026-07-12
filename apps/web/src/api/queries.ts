@@ -196,11 +196,16 @@ export function useChecklistMutations() {
       onSuccess: invalidate,
     }),
     addItem: useMutation({
-      mutationFn: (args: { listId: string; text: string; quantity: string | null }) =>
+      mutationFn: (args: { listId: string; text: string; quantity: string | null; store: string | null }) =>
         api(`/api/checklists/${args.listId}/items`, {
           method: "POST",
-          body: { text: args.text, quantity: args.quantity },
+          body: { text: args.text, quantity: args.quantity, store: args.store },
         }),
+      onSuccess: invalidate,
+    }),
+    updateItem: useMutation({
+      mutationFn: (args: { listId: string; itemId: string; patch: { text?: string; quantity?: string | null; store?: string | null } }) =>
+        api(`/api/checklists/${args.listId}/items/${args.itemId}`, { method: "PATCH", body: args.patch }),
       onSuccess: invalidate,
     }),
     removeItem: useMutation({
@@ -279,4 +284,64 @@ export function useTogglePlugin() {
       api(`/api/plugins/${args.id}/enabled`, { method: "POST", body: { enabled: args.enabled } }),
     onSuccess: () => void qc.invalidateQueries({ queryKey: ["plugins"] }),
   });
+}
+
+// ---------- Displays & API tokens ----------
+
+export const useDisplays = () =>
+  useQuery({
+    queryKey: ["devices"],
+    queryFn: () => api<{ devices: import("@coord/shared").DisplayInfo[] }>("/api/devices"),
+    select: (d) => d.devices,
+  });
+
+export function useDisplayMutations() {
+  const qc = useQueryClient();
+  const invalidate = () => void qc.invalidateQueries({ queryKey: ["devices"] });
+  return {
+    create: useMutation({
+      mutationFn: (args: { label: string }) =>
+        api<{ id: string; token: string }>("/api/devices", { method: "POST", body: args }),
+      onSuccess: invalidate,
+    }),
+    update: useMutation({
+      mutationFn: (args: { id: string; label?: string; config?: import("@coord/shared").DisplayConfig }) =>
+        api(`/api/devices/${args.id}`, { method: "PATCH", body: { label: args.label, config: args.config } }),
+      onSuccess: invalidate,
+    }),
+    remove: useMutation({
+      mutationFn: (id: string) => api(`/api/devices/${id}`, { method: "DELETE" }),
+      onSuccess: invalidate,
+    }),
+  };
+}
+
+export interface ApiTokenInfo {
+  id: string;
+  token: string;
+  label: string;
+  createdAt: number;
+}
+
+export const useApiTokens = () =>
+  useQuery({
+    queryKey: ["api-tokens"],
+    queryFn: () => api<{ tokens: ApiTokenInfo[] }>("/api/tokens"),
+    select: (d) => d.tokens,
+  });
+
+export function useApiTokenMutations() {
+  const qc = useQueryClient();
+  const invalidate = () => void qc.invalidateQueries({ queryKey: ["api-tokens"] });
+  return {
+    create: useMutation({
+      mutationFn: (args: { label: string }) =>
+        api<{ id: string; token: string }>("/api/tokens", { method: "POST", body: args }),
+      onSuccess: invalidate,
+    }),
+    remove: useMutation({
+      mutationFn: (id: string) => api(`/api/tokens/${id}`, { method: "DELETE" }),
+      onSuccess: invalidate,
+    }),
+  };
 }

@@ -1,8 +1,8 @@
 import { z } from "zod";
-import { deviceCan, taskInputSchema, type Task } from "@coord/shared";
+import { taskInputSchema, type Task } from "@coord/shared";
 import type { EventBus } from "@coord/plugin-sdk";
 import type { CoreModule } from "../core/plugin-host.js";
-import { requireCan, requireMember, requireSession, type MemberRow } from "../core/auth.js";
+import { requireAccess, requireActor } from "../core/auth.js";
 import { actorOf } from "../core/actor.js";
 import { parse } from "../core/http.js";
 import type { Db } from "../core/db.js";
@@ -108,7 +108,7 @@ export const tasksModule: CoreModule = {
   description: "Kids' chores and family to-dos with completion and swapping.",
   register({ app, db, bus }) {
     app.get("/api/tasks", (req, reply) => {
-      if (!requireSession(db, req, reply)) return;
+      if (!requireAccess(db, req, reply)) return;
       const household = getHousehold(db)!;
       const query = parse(z.object({ date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional() }), req.query, reply);
       if (!query) return;
@@ -117,25 +117,25 @@ export const tasksModule: CoreModule = {
     });
 
     app.post("/api/tasks", (req, reply) => {
-      const member = requireCan(db, req, reply, "task.manage");
-      if (!member) return;
+      const access = requireActor(db, req, reply, "task.manage");
+      if (!access) return;
       const input = parse(taskInputSchema, req.body, reply);
       if (!input) return;
       const id = uid();
       db.prepare(
         `INSERT INTO tasks (id, household_id, title, notes, icon, kind, assignee_id, due_at, repeat, points, created_by, created_at)
          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-      ).run(id, member.household_id, input.title, input.notes, input.icon, input.kind,
-        input.assigneeId, input.dueAt, input.repeat, input.points, member.id, now());
-      recordAudit(db, member.household_id, actorOf(member), "task", id, "create", `${member.name} added "${input.title}"`);
-      bus.emit("task.created", { taskId: id, title: input.title, actor: actorOf(member) });
+      ).run(id, access.householdId, input.title, input.notes, input.icon, input.kind,
+        input.assigneeId, input.dueAt, input.repeat, input.points, access.memberId, now());
+      recordAudit(db, access.householdId, actorOf(access), "task", id, "create", `${access.name} added "${input.title}"`);
+      bus.emit("task.created", { taskId: id, title: input.title, actor: actorOf(access) });
       reply.code(201);
       return { id };
     });
 
     app.patch("/api/tasks/:id", (req, reply) => {
-      const member = requireCan(db, req, reply, "task.manage");
-      if (!member) return;
+      const access = requireActor(db, req, reply, "task.manage");
+      if (!access) return;
       const patch = parse(taskInputSchema.partial(), req.body, reply);
       if (!patch) return;
       const { id } = req.params as { id: string };
@@ -154,15 +154,15 @@ export const tasksModule: CoreModule = {
         patch.points !== undefined ? patch.points : row.points,
         id,
       );
-      recordAudit(db, member.household_id, actorOf(member), "task", id, "update",
-        `${member.name} updated "${patch.title ?? row.title}"`);
-      bus.emit("task.created", { taskId: id, title: patch.title ?? row.title, actor: actorOf(member) });
+      recordAudit(db, access.householdId, actorOf(access), "task", id, "update",
+        `${access.name} updated "${patch.title ?? row.title}"`);
+      bus.emit("task.created", { taskId: id, title: patch.title ?? row.title, actor: actorOf(access) });
       return { ok: true };
     });
 
     app.delete("/api/tasks/:id", (req, reply) => {
-      const member = requireCan(db, req, reply, "task.manage");
-      if (!member) return;
+      const access = requireActor(db, req, reply, "task.manage");
+      if (!access) return;
       const { id } = req.params as { id: string };
       const row = db.prepare("SELECT title FROM tasks WHERE id = ? AND deleted_at IS NULL").get(id) as { title: string } | undefined;
       if (!row) {
@@ -171,29 +171,24 @@ export const tasksModule: CoreModule = {
       }
       db.prepare("UPDATE tasks SET deleted_at = ? WHERE id = ?").run(now(), id);
       db.prepare("DELETE FROM reminders WHERE entity_type = 'task' AND entity_id = ?").run(id);
-      recordAudit(db, member.household_id, actorOf(member), "task", id, "delete", `${member.name} removed "${row.title}"`);
-      bus.emit("task.created", { taskId: id, title: row.title, actor: actorOf(member) });
+      recordAudit(db, access.householdId, actorOf(access), "task", id, "delete", `${access.name} removed "${row.title}"`);
+      bus.emit("task.created", { taskId: id, title: row.title, actor: actorOf(access) });
       return { ok: true };
     });
 
-    // Anyone in the family — including the kitchen display — can check off a chore.
+    // Anyone in the family — displays and connected AIs included — can check off a chore.
     app.post("/api/tasks/:id/complete", (req, reply) => {
-      const session = requireSession(db, req, reply);
-      if (!session) return;
-      if (session.kind === "device" && !deviceCan("task.complete")) {
-        reply.code(403).send({ error: "This display can't do that" });
-        return;
-      }
+      const access = requireActor(db, req, reply, "task.complete");
+      if (!access) return;
       const body = parse(z.object({ occurrenceDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).nullable().default(null) }), req.body ?? {}, reply);
       if (!body) return;
-      const household = getHousehold(db)!;
-      return completeTask(db, bus, household.id, actorOf(session), (req.params as { id: string }).id, body.occurrenceDate);
+      return completeTask(db, bus, access.householdId, actorOf(access), (req.params as { id: string }).id, body.occurrenceDate);
     });
 
     // Kids can swap chores between themselves — "super simple reassigning".
     app.post("/api/tasks/:id/reassign", (req, reply) => {
-      const member = requireMember(db, req, reply);
-      if (!member) return;
+      const access = requireActor(db, req, reply, "task.reassign");
+      if (!access) return;
       const body = parse(z.object({ toMemberId: z.string().nullable() }), req.body, reply);
       if (!body) return;
       const { id } = req.params as { id: string };
@@ -210,9 +205,9 @@ export const tasksModule: CoreModule = {
         return;
       }
       db.prepare("UPDATE tasks SET assignee_id = ? WHERE id = ?").run(body.toMemberId, id);
-      recordAudit(db, member.household_id, actorOf(member), "task", id, "reassign",
-        target ? `${member.name} handed "${row.title}" to ${target.name}` : `${member.name} unassigned "${row.title}"`);
-      bus.emit("task.reassigned", { taskId: id, title: row.title, toMemberId: body.toMemberId ?? "", actor: actorOf(member) });
+      recordAudit(db, access.householdId, actorOf(access), "task", id, "reassign",
+        target ? `${access.name} handed "${row.title}" to ${target.name}` : `${access.name} unassigned "${row.title}"`);
+      bus.emit("task.reassigned", { taskId: id, title: row.title, toMemberId: body.toMemberId ?? "", actor: actorOf(access) });
       return { ok: true };
     });
   },

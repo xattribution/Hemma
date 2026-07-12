@@ -9,7 +9,8 @@ export type QueryKeyPattern =
   | "checklists"
   | "members"
   | "dashboard"
-  | "audit";
+  | "audit"
+  | "me"; // display config changes propagate to signed-in kiosks
 
 export type WsServerMessage =
   | { type: "hello"; onlineCount: number }

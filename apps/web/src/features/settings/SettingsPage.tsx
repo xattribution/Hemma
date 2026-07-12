@@ -1,14 +1,14 @@
 import { useState } from "react";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Bell, Monitor, Pencil, Plus, Puzzle, Trash2, Users } from "lucide-react";
+import { Bell, Pencil, Plus, Puzzle, Trash2, Users } from "lucide-react";
 import type { Me, Member, Role } from "@coord/shared";
 import { AVATARS, MEMBER_COLORS, can } from "@coord/shared";
-import { api } from "../../api/client";
 import { useMemberMutations, useMembers, usePlugins, useTogglePlugin } from "../../api/queries";
 import { Avatar } from "../../components/Avatar";
 import { Modal, ghostBtn, inputCls, labelCls, primaryBtn } from "../../components/Modal";
 import { showToast } from "../../components/Toast";
 import { usePush } from "./usePush";
+import { DisplaysSection } from "./DisplaysSection";
+import { AiAccessSection } from "./AiAccessSection";
 
 export function SettingsPage({ me }: { me: Extract<Me, { kind: "member" }> }) {
   const isParent = can(me.member.role, "settings.manage");
@@ -18,6 +18,7 @@ export function SettingsPage({ me }: { me: Extract<Me, { kind: "member" }> }) {
       <FamilySection isParent={isParent} />
       <NotificationsSection />
       {isParent && <DisplaysSection />}
+      {isParent && <AiAccessSection />}
       {isParent && <PluginsSection />}
       <section className="rounded-card bg-card p-4 shadow-card text-sm font-semibold text-ink-soft">
         Coord v0.1 — your family's data lives on your own server. 💛
@@ -165,59 +166,6 @@ function NotificationsSection() {
       )}
       {state === "on" && (
         <button type="button" className={ghostBtn} onClick={() => void disable()}>Turn off</button>
-      )}
-    </section>
-  );
-}
-
-// ---------- Kiosk displays ----------
-
-function DisplaysSection() {
-  const qc = useQueryClient();
-  const { data } = useQuery({
-    queryKey: ["devices"],
-    queryFn: () => api<{ devices: { id: string; label: string }[] }>("/api/devices"),
-  });
-  const [newToken, setNewToken] = useState<string | null>(null);
-  const [label, setLabel] = useState("");
-
-  const create = async (e: React.FormEvent) => {
-    e.preventDefault();
-    const { token } = await api<{ token: string }>("/api/devices", { method: "POST", body: { label } });
-    setNewToken(token);
-    setLabel("");
-    void qc.invalidateQueries({ queryKey: ["devices"] });
-  };
-
-  return (
-    <section className="rounded-card bg-card p-4 shadow-card">
-      <h3 className="mb-2 flex items-center gap-2 font-extrabold"><Monitor size={18} /> Kitchen displays</h3>
-      <p className="mb-3 text-sm font-semibold text-ink-soft">
-        Create a display link, then open it once on your tablet — it stays signed in on the dashboard.
-      </p>
-      <div className="space-y-2">
-        {(data?.devices ?? []).map((device) => (
-          <div key={device.id} className="flex items-center justify-between rounded-xl border-2 border-line px-3 py-2">
-            <span className="font-bold">{device.label}</span>
-            <button type="button" className="rounded-lg p-1.5 text-ink-soft hover:text-coral"
-              onClick={async () => {
-                await api(`/api/devices/${device.id}`, { method: "DELETE" });
-                void qc.invalidateQueries({ queryKey: ["devices"] });
-              }}>
-              <Trash2 size={15} />
-            </button>
-          </div>
-        ))}
-      </div>
-      <form onSubmit={create} className="mt-3 flex gap-2">
-        <input className={inputCls} placeholder="Kitchen tablet" value={label} onChange={(e) => setLabel(e.target.value)} required maxLength={60} />
-        <button className={`${primaryBtn} shrink-0`}>Create</button>
-      </form>
-      {newToken && (
-        <div className="mt-3 rounded-xl bg-coral-soft p-3 text-sm font-semibold">
-          <p className="mb-1 font-extrabold">Open this on the tablet (shown once):</p>
-          <code className="break-all text-xs">{`${location.origin}/dashboard?device=${newToken}`}</code>
-        </div>
       )}
     </section>
   );
