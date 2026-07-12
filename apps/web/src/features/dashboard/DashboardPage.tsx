@@ -4,8 +4,10 @@ import { format, startOfMonth } from "date-fns";
 import { Check, ChevronLeft, ChevronRight } from "lucide-react";
 import { DEFAULT_DISPLAY_CONFIG, EVENT_CATEGORIES, type DisplayConfig } from "@coord/shared";
 import {
-  useChecklistMutations, useDashboard, useEventsRange, useMe, useMembers, useTaskMutations,
+  useChecklistMutations, useChecklists, useDashboard, useEventsRange, useMe, useMembers,
+  useStores, useTaskMutations,
 } from "../../api/queries";
+import { StoreChip } from "../lists/ListsPage";
 import { Avatar } from "../../components/Avatar";
 import { PluginSlot } from "../../plugins/registry";
 import { MonthView } from "../calendar/MonthView";
@@ -53,7 +55,7 @@ export function DashboardPage() {
           </div>
         </header>
 
-        {config.layout === "calendar" ? <DisplayCalendar /> : <DisplayCards config={config} />}
+        {config.layout === "calendar" ? <DisplayCalendar /> : config.layout === "lists" ? <DisplayLists /> : <DisplayCards config={config} />}
       </div>
     </ElevationProvider>
   );
@@ -93,6 +95,57 @@ function DisplayCalendar() {
       />
       {day && (
         <DayModal day={day} members={members ?? []} canManageEvents={false} onClose={() => setDay(null)} />
+      )}
+    </div>
+  );
+}
+
+/** Lists-only layout — every pinned list big and touchable (all lists if none pinned). */
+function DisplayLists() {
+  const { data: lists } = useChecklists();
+  const { data: stores } = useStores();
+  const mutations = useChecklistMutations();
+  const { ensure } = useElevation();
+
+  const pinned = (lists ?? []).filter((l) => l.pinnedToDashboard);
+  const shown = pinned.length ? pinned : (lists ?? []);
+
+  return (
+    <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+      {shown.map((list) => {
+        const done = list.items.filter((i) => i.checked).length;
+        return (
+          <div key={list.id} className="rounded-card bg-card p-4 shadow-card">
+            <div className="mb-2 flex items-center gap-2">
+              <span className="text-2xl">{list.icon}</span>
+              <h2 className="font-extrabold">{list.title}</h2>
+              <span className="text-xs font-bold text-ink-soft">{done}/{list.items.length}</span>
+              {list.needBy !== null && (
+                <span className="rounded-full bg-sun/20 px-2 py-0.5 text-[10px] font-extrabold">
+                  need by {format(list.needBy, "EEE")}
+                </span>
+              )}
+            </div>
+            <ul className="space-y-1">
+              {list.items.map((item) => (
+                <li key={item.id}>
+                  <label className="flex cursor-pointer items-center gap-2 rounded-lg px-1 py-1.5 hover:bg-cream">
+                    <input type="checkbox" checked={item.checked} className="h-6 w-6 accent-leaf"
+                      onChange={() => void ensure().then((ok) => ok && mutations.toggleItem.mutate({ listId: list.id, itemId: item.id }))} />
+                    <span className={`flex-1 truncate font-semibold ${item.checked ? "text-ink-soft line-through" : ""}`}>
+                      {item.text}
+                      {item.quantity && <span className="ml-1 text-xs font-bold text-ink-soft">× {item.quantity}</span>}
+                    </span>
+                    {item.store && <StoreChip store={item.store} stores={stores ?? []} muted={item.checked} />}
+                  </label>
+                </li>
+              ))}
+            </ul>
+          </div>
+        );
+      })}
+      {shown.length === 0 && (
+        <p className="rounded-card bg-card p-8 text-center font-semibold text-ink-soft shadow-card">No lists yet.</p>
       )}
     </div>
   );

@@ -1,50 +1,40 @@
-import { useMemo, useState } from "react";
-import { format } from "date-fns";
-import { CalendarClock, Pin, PinOff, Plus, Tag, Trash2, X } from "lucide-react";
-import type { Checklist, ChecklistItem, Me } from "@coord/shared";
+import { useEffect, useMemo, useState } from "react";
+import { addDays, format, startOfDay } from "date-fns";
+import QRCode from "qrcode";
+import {
+  Eraser, CalendarClock, Link2, Pin, PinOff, Plus, Share2, Tag, Trash2, X,
+} from "lucide-react";
+import type { Checklist, ChecklistItem, Me, StoreTag } from "@coord/shared";
 import { can } from "@coord/shared";
-import { useChecklistMutations, useChecklists } from "../../api/queries";
+import { useChecklistMutations, useChecklists, useEventsRange, useStores } from "../../api/queries";
 import { Modal, ghostBtn, inputCls, labelCls, primaryBtn } from "../../components/Modal";
 import { showToast } from "../../components/Toast";
 
 const LIST_ICONS = ["🛒", "🏖️", "🎒", "🎁", "🧳", "🏕️", "📦", "🎄"];
 
-/** "Milk x2 @costco" → { text: "Milk", quantity: "2", store: "costco" } */
-function parseQuickAdd(raw: string): { text: string; quantity: string | null; store: string | null } {
-  let text = raw.trim();
-  let store: string | null = null;
-  let quantity: string | null = null;
-  const storeMatch = /\s@([\w& '-]+)$/.exec(text);
-  if (storeMatch) {
-    store = storeMatch[1]!.trim();
-    text = text.slice(0, storeMatch.index).trim();
-  }
-  const qtyMatch = /^(.*?)\s+x(\S+)$/i.exec(text);
-  if (qtyMatch) {
-    text = qtyMatch[1]!.trim();
-    quantity = qtyMatch[2]!;
-  }
-  return { text, quantity, store };
+export function StoreChip({ store, stores, onClick, muted }: { store: string; stores: StoreTag[]; onClick?: () => void; muted?: boolean }) {
+  const color = stores.find((s) => s.name.toLowerCase() === store.toLowerCase())?.color ?? "#5a7d8c";
+  return (
+    <button type="button" onClick={onClick} disabled={!onClick}
+      className={`inline-flex shrink-0 items-center gap-1 rounded-full px-2 py-0.5 text-xs font-extrabold text-white transition ${onClick ? "hover:brightness-110" : ""}`}
+      style={{ backgroundColor: color, opacity: muted ? 0.55 : 1 }}>
+      <Tag size={10} /> {store}
+    </button>
+  );
 }
 
 export function ListsPage({ me }: { me: Extract<Me, { kind: "member" }> }) {
   const { data: lists } = useChecklists();
-  const mutations = useChecklistMutations();
-  const [creating, setCreating] = useState(false);
-  const isParent = can(me.member.role, "checklist.manage");
-
-  // Stores already used anywhere — offered when tagging items.
-  const knownStores = useMemo(
-    () => [...new Set((lists ?? []).flatMap((l) => l.items.map((i) => i.store)).filter(Boolean) as string[])].sort(),
-    [lists],
-  );
+  const { data: stores } = useStores();
+  const [editing, setEditing] = useState<Checklist | "new" | null>(null);
+  const isParent = can(me.member.role, "checklist.manage", me.member.grants);
 
   return (
     <div className="space-y-3">
       <div className="flex items-center justify-between">
         <h2 className="text-xl font-extrabold">Family lists</h2>
         {isParent && (
-          <button type="button" className={`${primaryBtn} flex items-center gap-1`} onClick={() => setCreating(true)}>
+          <button type="button" className={`${primaryBtn} flex items-center gap-1`} onClick={() => setEditing("new")}>
             <Plus size={18} /> List
           </button>
         )}
@@ -52,7 +42,7 @@ export function ListsPage({ me }: { me: Extract<Me, { kind: "member" }> }) {
 
       <div className="grid gap-3 lg:grid-cols-2">
         {(lists ?? []).map((list) => (
-          <ListCard key={list.id} list={list} isParent={isParent} knownStores={knownStores} />
+          <ListCard key={list.id} list={list} isParent={isParent} stores={stores ?? []} onEdit={() => setEditing(list)} />
         ))}
         {lists?.length === 0 && (
           <p className="rounded-card bg-card p-8 text-center font-semibold text-ink-soft shadow-card">
@@ -61,36 +51,27 @@ export function ListsPage({ me }: { me: Extract<Me, { kind: "member" }> }) {
         )}
       </div>
 
-      {creating && <NewListModal onClose={() => setCreating(false)} />}
+      {editing && <ListModal list={editing === "new" ? null : editing} onClose={() => setEditing(null)} />}
     </div>
   );
 }
 
-function ListCard({ list, isParent, knownStores }: { list: Checklist; isParent: boolean; knownStores: string[] }) {
+function ListCard({ list, isParent, stores, onEdit }: { list: Checklist; isParent: boolean; stores: StoreTag[]; onEdit: () => void }) {
   const mutations = useChecklistMutations();
-  const [text, setText] = useState("");
   const [storeFilter, setStoreFilter] = useState<string | null>(null);
   const [tagging, setTagging] = useState<ChecklistItem | null>(null);
+  const [sharing, setSharing] = useState(false);
   const done = list.items.filter((i) => i.checked).length;
 
-  const stores = [...new Set(list.items.map((i) => i.store).filter(Boolean) as string[])].sort();
+  const usedStores = [...new Set(list.items.map((i) => i.store).filter(Boolean) as string[])].sort();
   const visibleItems = storeFilter ? list.items.filter((i) => i.store === storeFilter) : list.items;
-
-  const addItem = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!text.trim()) return;
-    const parsed = parseQuickAdd(text);
-    mutations.addItem.mutate(
-      { listId: list.id, ...parsed },
-      { onError: (err) => showToast(err.message, "error") },
-    );
-    setText("");
-  };
 
   return (
     <div className="rounded-card bg-card p-4 shadow-card">
-      <div className="mb-2 flex items-center gap-2">
-        <span className="text-2xl">{list.icon}</span>
+      <div className="mb-2 flex flex-wrap items-center gap-2">
+        <button type="button" className="text-2xl" onClick={isParent ? onEdit : undefined} title={isParent ? "Edit list" : undefined}>
+          {list.icon}
+        </button>
         <h3 className="font-extrabold">{list.title}</h3>
         <span className="text-xs font-bold text-ink-soft">{done}/{list.items.length}</span>
         {list.needBy !== null && (
@@ -98,33 +79,51 @@ function ListCard({ list, isParent, knownStores }: { list: Checklist; isParent: 
             <CalendarClock size={12} /> {format(list.needBy, "EEE MMM d")}
           </span>
         )}
-        {isParent && (
-          <span className="ml-auto flex gap-1">
-            <NeedByButton list={list} />
-            <button type="button" title={list.pinnedToDashboard ? "Unpin from displays" : "Pin to displays"}
-              className="rounded-lg p-1.5 text-ink-soft hover:bg-line"
-              onClick={() => mutations.update.mutate({ id: list.id, pinnedToDashboard: !list.pinnedToDashboard })}>
-              {list.pinnedToDashboard ? <Pin size={15} className="text-coral" /> : <PinOff size={15} />}
-            </button>
-            <button type="button" title="Delete list" className="rounded-lg p-1.5 text-ink-soft hover:bg-line hover:text-coral"
-              onClick={() => mutations.remove.mutate(list.id)}>
-              <Trash2 size={15} />
-            </button>
+        {list.linkedEventTitle && (
+          <span className="flex items-center gap-1 rounded-full bg-coral-soft px-2 py-0.5 text-xs font-extrabold text-coral">
+            <Link2 size={12} /> {list.linkedEventTitle}
           </span>
         )}
+        <span className="ml-auto flex gap-1">
+          <button type="button" title="Share this list" className="rounded-lg p-1.5 text-ink-soft hover:bg-line"
+            onClick={() => setSharing(true)}>
+            <Share2 size={15} />
+          </button>
+          {done > 0 && (
+            <button type="button" title="Clear done items" className="rounded-lg p-1.5 text-ink-soft hover:bg-line"
+              onClick={() =>
+                mutations.clearChecked.mutate(list.id, {
+                  onSuccess: (r) => showToast(`Cleared ${r.removed} done item${r.removed === 1 ? "" : "s"} ✨`),
+                })
+              }>
+              <Eraser size={15} />
+            </button>
+          )}
+          {isParent && (
+            <>
+              <button type="button" title={list.pinnedToDashboard ? "Unpin from displays" : "Pin to displays"}
+                className="rounded-lg p-1.5 text-ink-soft hover:bg-line"
+                onClick={() => mutations.update.mutate({ id: list.id, pinnedToDashboard: !list.pinnedToDashboard })}>
+                {list.pinnedToDashboard ? <Pin size={15} className="text-coral" /> : <PinOff size={15} />}
+              </button>
+              <button type="button" title="Delete list" className="rounded-lg p-1.5 text-ink-soft hover:bg-line hover:text-coral"
+                onClick={() => mutations.remove.mutate(list.id)}>
+                <Trash2 size={15} />
+              </button>
+            </>
+          )}
+        </span>
       </div>
 
-      {stores.length > 0 && (
+      {usedStores.length > 0 && (
         <div className="mb-2 flex flex-wrap gap-1">
           <button type="button" onClick={() => setStoreFilter(null)}
             className={`rounded-full px-2 py-0.5 text-xs font-extrabold ${storeFilter === null ? "bg-ink text-cream" : "bg-line text-ink-soft"}`}>
             All
           </button>
-          {stores.map((store) => (
-            <button key={store} type="button" onClick={() => setStoreFilter(storeFilter === store ? null : store)}
-              className={`rounded-full px-2 py-0.5 text-xs font-extrabold ${storeFilter === store ? "bg-sky text-white" : "bg-sky/10 text-sky"}`}>
-              {store}
-            </button>
+          {usedStores.map((store) => (
+            <StoreChip key={store} store={store} stores={stores} muted={storeFilter !== null && storeFilter !== store}
+              onClick={() => setStoreFilter(storeFilter === store ? null : store)} />
           ))}
         </div>
       )}
@@ -146,14 +145,14 @@ function ListCard({ list, isParent, knownStores }: { list: Checklist; isParent: 
                 {item.quantity && <span className="ml-1 text-xs font-bold text-ink-soft">× {item.quantity}</span>}
               </span>
             </label>
-            <button type="button" title={item.store ? `From ${item.store} — tap to change` : "Tag a store"}
-              onClick={() => setTagging(item)}
-              className={`flex shrink-0 items-center gap-1 rounded-full px-2 py-0.5 text-xs font-extrabold transition ${
-                item.store ? "bg-sky/10 text-sky" : "text-ink-soft opacity-0 group-hover:opacity-100 hover:bg-line"
-              }`}>
-              <Tag size={11} />
-              {item.store ?? "store"}
-            </button>
+            {item.store ? (
+              <StoreChip store={item.store} stores={stores} muted={item.checked} onClick={() => setTagging(item)} />
+            ) : (
+              <button type="button" title="Tag a store" onClick={() => setTagging(item)}
+                className="shrink-0 rounded-full px-2 py-0.5 text-xs font-extrabold text-ink-soft opacity-0 transition group-hover:opacity-100 hover:bg-line">
+                <Tag size={11} className="inline" /> store
+              </button>
+            )}
             <button type="button" aria-label="Remove item"
               className="shrink-0 rounded p-1 text-ink-soft opacity-0 transition group-hover:opacity-100 hover:text-coral"
               onClick={() => mutations.removeItem.mutate({ listId: list.id, itemId: item.id })}>
@@ -163,52 +162,98 @@ function ListCard({ list, isParent, knownStores }: { list: Checklist; isParent: 
         ))}
       </ul>
 
-      <form onSubmit={addItem} className="mt-2 flex gap-2">
-        <input className={`${inputCls} py-1.5 text-sm`} placeholder="Add item… (try “Milk x2 @Costco”)" value={text}
-          onChange={(e) => setText(e.target.value)} maxLength={260} />
-        <button className={`${primaryBtn} px-3 py-1.5`} aria-label="Add">
-          <Plus size={16} />
-        </button>
-      </form>
+      <AddItemRow listId={list.id} stores={stores} />
 
       {tagging && (
         <Modal title={`Where is "${tagging.text}" from?`} onClose={() => setTagging(null)}>
-          <StorePicker
-            current={tagging.store}
-            knownStores={knownStores}
+          <StorePicker current={tagging.store} stores={stores}
             onPick={(store) => {
               mutations.updateItem.mutate({ listId: list.id, itemId: tagging.id, patch: { store } });
               setTagging(null);
-            }}
-          />
+            }} />
         </Modal>
       )}
+      {sharing && <ShareModal list={list} onClose={() => setSharing(false)} />}
     </div>
   );
 }
 
-function StorePicker({ current, knownStores, onPick }: { current: string | null; knownStores: string[]; onPick: (store: string | null) => void }) {
+/** Structured quick-add: item, optional quantity (defaults to 1), optional store quick-tag. */
+function AddItemRow({ listId, stores }: { listId: string; stores: StoreTag[] }) {
+  const mutations = useChecklistMutations();
+  const [text, setText] = useState("");
+  const [quantity, setQuantity] = useState("");
+  const [store, setStore] = useState("");
+  const [newStore, setNewStore] = useState("");
+
+  const submit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!text.trim()) return;
+    const chosenStore = store === "__new" ? newStore.trim() || null : store || null;
+    mutations.addItem.mutate(
+      { listId, text: text.trim(), quantity: quantity.trim() || null, store: chosenStore },
+      { onError: (err) => showToast(err.message, "error") },
+    );
+    setText("");
+    setQuantity("");
+    if (store === "__new") setStore(newStore.trim());
+    setNewStore("");
+  };
+
+  return (
+    <form onSubmit={submit} className="mt-2 space-y-1.5">
+      <div className="flex gap-1.5">
+        <input className={`${inputCls} min-w-0 flex-1 py-1.5 text-sm`} placeholder="Add item…" value={text}
+          onChange={(e) => setText(e.target.value)} maxLength={200} />
+        <input
+          className="w-14 shrink-0 rounded-xl border-2 border-line bg-card px-1 py-1.5 text-center text-sm font-semibold text-ink outline-none focus:border-coral"
+          placeholder="qty" title="Quantity (blank = 1)"
+          value={quantity} onChange={(e) => setQuantity(e.target.value)} maxLength={8} />
+        <button className={`${primaryBtn} shrink-0 px-3 py-1.5`} aria-label="Add" disabled={!text.trim()}>
+          <Plus size={16} />
+        </button>
+      </div>
+      <div className="flex flex-wrap items-center gap-1">
+        <button type="button" onClick={() => setStore("")}
+          className={`rounded-full px-2 py-0.5 text-xs font-extrabold ${store === "" ? "bg-ink text-cream" : "bg-line text-ink-soft"}`}>
+          any store
+        </button>
+        {stores.map((s) => (
+          <button key={s.name} type="button" onClick={() => setStore(store === s.name ? "" : s.name)}
+            className="rounded-full px-2 py-0.5 text-xs font-extrabold text-white transition"
+            style={{ backgroundColor: s.color, opacity: store === "" || store === s.name ? 1 : 0.45 }}>
+            {s.name}
+          </button>
+        ))}
+        <button type="button" onClick={() => setStore(store === "__new" ? "" : "__new")}
+          className={`rounded-full px-2 py-0.5 text-xs font-extrabold ${store === "__new" ? "bg-sky text-white" : "bg-line text-ink-soft"}`}>
+          + store
+        </button>
+        {store === "__new" && (
+          <input className={`${inputCls} w-32 px-2 py-0.5 text-xs`} placeholder="Store name" value={newStore} autoFocus
+            onChange={(e) => setNewStore(e.target.value)} maxLength={40} />
+        )}
+      </div>
+    </form>
+  );
+}
+
+function StorePicker({ current, stores, onPick }: { current: string | null; stores: StoreTag[]; onPick: (store: string | null) => void }) {
   const [newStore, setNewStore] = useState("");
   return (
     <div className="space-y-3">
       <div className="flex flex-wrap gap-1.5">
-        {knownStores.map((store) => (
-          <button key={store} type="button" onClick={() => onPick(store)}
-            className={`rounded-full px-3 py-1.5 text-sm font-extrabold ${current === store ? "bg-sky text-white" : "bg-sky/10 text-sky"}`}>
-            {store}
+        {stores.map((s) => (
+          <button key={s.name} type="button" onClick={() => onPick(s.name)}
+            className="rounded-full px-3 py-1.5 text-sm font-extrabold text-white"
+            style={{ backgroundColor: s.color, opacity: current && current !== s.name ? 0.55 : 1 }}>
+            {s.name}
           </button>
         ))}
-        {current && (
-          <button type="button" className={ghostBtn} onClick={() => onPick(null)}>No store</button>
-        )}
+        {current && <button type="button" className={ghostBtn} onClick={() => onPick(null)}>No store</button>}
       </div>
-      <form
-        className="flex gap-2"
-        onSubmit={(e) => {
-          e.preventDefault();
-          if (newStore.trim()) onPick(newStore.trim());
-        }}
-      >
+      <form className="flex gap-2"
+        onSubmit={(e) => { e.preventDefault(); if (newStore.trim()) onPick(newStore.trim()); }}>
         <input className={inputCls} placeholder="New store…" value={newStore} onChange={(e) => setNewStore(e.target.value)} maxLength={40} />
         <button className={`${primaryBtn} shrink-0 px-3`}>Tag</button>
       </form>
@@ -216,49 +261,105 @@ function StorePicker({ current, knownStores, onPick }: { current: string | null;
   );
 }
 
-function NeedByButton({ list }: { list: Checklist }) {
-  const mutations = useChecklistMutations();
+// ---------- Share: native share sheet, clipboard, email, QR ----------
+
+function listAsText(list: Checklist): string {
+  const lines = list.items
+    .filter((i) => !i.checked)
+    .map((i) => `• ${i.text}${i.quantity ? ` ×${i.quantity}` : ""}${i.store ? ` (${i.store})` : ""}`);
+  const header = `${list.icon} ${list.title}${list.needBy ? ` — need by ${format(list.needBy, "EEE MMM d")}` : ""}`;
+  return [header, ...lines].join("\n");
+}
+
+function ShareModal({ list, onClose }: { list: Checklist; onClose: () => void }) {
+  const text = listAsText(list);
+  const [qr, setQr] = useState<string | null>(null);
+
+  useEffect(() => {
+    void QRCode.toDataURL(text, { width: 280, margin: 1, color: { dark: "#3a3330", light: "#fdf8f0" } }).then(setQr);
+  }, [text]);
+
+  const nativeShare = async () => {
+    try {
+      await navigator.share({ title: list.title, text });
+    } catch {
+      // user dismissed the sheet — fine
+    }
+  };
+
+  const copy = async () => {
+    try {
+      await navigator.clipboard.writeText(text);
+      showToast("List copied 📋");
+    } catch {
+      window.prompt("Copy the list:", text);
+    }
+  };
+
   return (
-    <label title="Need this list by a date? It'll show up in that day's summary."
-      className="relative cursor-pointer rounded-lg p-1.5 text-ink-soft hover:bg-line">
-      <CalendarClock size={15} />
-      <input
-        type="date"
-        className="absolute inset-0 cursor-pointer opacity-0"
-        value={list.needBy ? format(list.needBy, "yyyy-MM-dd") : ""}
-        onChange={(e) => {
-          const value = e.target.value;
-          mutations.update.mutate({
-            id: list.id,
-            needBy: value ? new Date(`${value}T12:00:00`).getTime() : null,
-          });
-        }}
-      />
-    </label>
+    <Modal title={`Share "${list.title}"`} onClose={onClose}>
+      <pre className="mb-3 max-h-40 overflow-y-auto whitespace-pre-wrap rounded-xl bg-card p-3 text-sm font-semibold">{text}</pre>
+      <div className="mb-3 flex flex-wrap gap-2">
+        {"share" in navigator && (
+          <button type="button" className={primaryBtn} onClick={() => void nativeShare()}>Share…</button>
+        )}
+        <button type="button" className={ghostBtn} onClick={() => void copy()}>Copy</button>
+        <a className={ghostBtn}
+          href={`mailto:?subject=${encodeURIComponent(list.title)}&body=${encodeURIComponent(text)}`}>
+          Email
+        </a>
+      </div>
+      {qr && (
+        <>
+          <img src={qr} alt="List as QR code" className="mx-auto rounded-xl" />
+          <p className="mt-1 text-center text-xs font-semibold text-ink-soft">
+            Scan with any phone camera — the list text appears, ready to save to notes.
+          </p>
+        </>
+      )}
+    </Modal>
   );
 }
 
-function NewListModal({ onClose }: { onClose: () => void }) {
+// ---------- Create / edit list ----------
+
+type ListType = "running" | "dated" | "event";
+
+function ListModal({ list, onClose }: { list: Checklist | null; onClose: () => void }) {
   const mutations = useChecklistMutations();
-  const [title, setTitle] = useState("");
-  const [icon, setIcon] = useState("🛒");
-  const [needBy, setNeedBy] = useState("");
+  const [title, setTitle] = useState(list?.title ?? "");
+  const [icon, setIcon] = useState(list?.icon ?? "🛒");
+  const [type, setType] = useState<ListType>(list?.linkedEventId ? "event" : list?.needBy ? "dated" : "running");
+  const [needBy, setNeedBy] = useState(list?.needBy ? format(list.needBy, "yyyy-MM-dd") : "");
+  const [eventId, setEventId] = useState(list?.linkedEventId ?? "");
+
+  // Upcoming events (next 60 days) for the event picker.
+  const windowStart = useMemo(() => startOfDay(new Date()).getTime(), []);
+  const { data: instances } = useEventsRange(windowStart, addDays(windowStart, 60).getTime());
+  const upcoming = useMemo(() => {
+    const seen = new Map<string, { id: string; label: string }>();
+    for (const i of instances ?? []) {
+      if (!seen.has(i.id)) seen.set(i.id, { id: i.id, label: `${i.title} — ${format(i.occurrenceStart, "EEE MMM d")}` });
+    }
+    return [...seen.values()];
+  }, [instances]);
+
+  const submit = (e: React.FormEvent) => {
+    e.preventDefault();
+    const payload = {
+      title, icon, kind: "shopping" as const,
+      pinnedToDashboard: list?.pinnedToDashboard ?? false,
+      needBy: type === "dated" && needBy ? new Date(`${needBy}T12:00:00`).getTime() : null,
+      linkedEventId: type === "event" && eventId ? eventId : null,
+    };
+    const options = { onSuccess: onClose, onError: (err: Error) => showToast(err.message, "error") };
+    if (list) mutations.update.mutate({ id: list.id, ...payload }, options);
+    else mutations.create.mutate(payload, options);
+  };
 
   return (
-    <Modal title="New list" onClose={onClose}>
-      <form
-        onSubmit={(e) => {
-          e.preventDefault();
-          mutations.create.mutate(
-            {
-              title, icon, kind: "shopping", pinnedToDashboard: false,
-              needBy: needBy ? new Date(`${needBy}T12:00:00`).getTime() : null,
-            },
-            { onSuccess: onClose, onError: (err) => showToast(err.message, "error") },
-          );
-        }}
-        className="space-y-4"
-      >
+    <Modal title={list ? "Edit list" : "New list"} onClose={onClose}>
+      <form onSubmit={submit} className="space-y-4">
         <input className={inputCls} placeholder="Groceries, packing, gifts…" value={title}
           onChange={(e) => setTitle(e.target.value)} autoFocus required maxLength={80} />
         <div>
@@ -273,12 +374,35 @@ function NewListModal({ onClose }: { onClose: () => void }) {
           </div>
         </div>
         <div>
-          <label className={labelCls}>Need it by (optional)</label>
-          <input className={inputCls} type="date" value={needBy} onChange={(e) => setNeedBy(e.target.value)} />
+          <label className={labelCls}>What kind of list?</label>
+          <div className="flex gap-2">
+            {([["running", "🔄 Running"], ["dated", "📆 Need by"], ["event", "🔗 For an event"]] as const).map(([key, label]) => (
+              <button key={key} type="button" onClick={() => setType(key)}
+                className={`flex-1 rounded-xl border-2 px-2 py-2 text-sm font-bold ${type === key ? "border-coral bg-coral-soft" : "border-line bg-card"}`}>
+                {label}
+              </button>
+            ))}
+          </div>
+          <p className="mt-1 text-xs font-semibold text-ink-soft">
+            {type === "running" && "Always going — add, check off, clear, repeat (like groceries)."}
+            {type === "dated" && "Has a deadline; shows up in that day's summary."}
+            {type === "event" && "Rides along with a calendar event (like a packing list)."}
+          </p>
         </div>
+        {type === "dated" && (
+          <input className={inputCls} type="date" value={needBy} required onChange={(e) => setNeedBy(e.target.value)} />
+        )}
+        {type === "event" && (
+          <select className={inputCls} value={eventId} required onChange={(e) => setEventId(e.target.value)}>
+            <option value="" disabled>Pick an upcoming event…</option>
+            {upcoming.map((event) => (
+              <option key={event.id} value={event.id}>{event.label}</option>
+            ))}
+          </select>
+        )}
         <div className="flex justify-end gap-2">
           <button type="button" className={ghostBtn} onClick={onClose}>Cancel</button>
-          <button className={primaryBtn} disabled={!title.trim()}>Create</button>
+          <button className={primaryBtn} disabled={!title.trim()}>{list ? "Save" : "Create"}</button>
         </div>
       </form>
     </Modal>

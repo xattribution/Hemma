@@ -5,7 +5,7 @@ import crypto from "node:crypto";
 
 export type Db = Database.Database;
 
-const SCHEMA_VERSION = 3;
+const SCHEMA_VERSION = 4;
 
 const SCHEMA = /* sql */ `
 CREATE TABLE households (
@@ -243,6 +243,10 @@ function migrate(db: Db) {
       ALTER TABLE members_v3 RENAME TO members;
     `);
     db.pragma("foreign_keys = ON");
+  }
+  if (version < 4) {
+    // Lists can be linked to a calendar event (they surface on its days).
+    db.exec("ALTER TABLE checklists ADD COLUMN linked_event_id TEXT;");
   }
   db.pragma(`user_version = ${SCHEMA_VERSION}`);
 }

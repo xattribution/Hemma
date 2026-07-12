@@ -72,13 +72,23 @@ parent-level permissions.
 
 ## Lists (shopping, packing, checklists)
 
+Lists come in three flavors: **running** (no dates — groceries, constantly
+added to and cleared), **dated** (needBy deadline — appears in that day's
+summary), and **event-linked** (linkedEventId — rides along with an event's
+days, e.g. a packing list for the beach trip).
+
 - GET /api/checklists → all lists with items
-  (item: text, quantity, store, checked; list: needBy nullable ms deadline)
+  (item: text, quantity, store, checked; list: needBy nullable ms deadline,
+  linkedEventId + linkedEventTitle nullable)
+- GET /api/stores → the household's store quick-tags [{name, color}];
+  stores auto-register the first time an item uses them
 - POST /api/checklists — { "title": "Groceries", "icon": "🛒",
   "kind": "shopping"|"packing"|"checklist", "pinnedToDashboard": true,
-  "needBy": <ms|null> }
+  "needBy": <ms|null>, "linkedEventId": <eventId|null> }
 - PATCH /api/checklists/:id — partial (set needBy to give it a deadline;
   the list then appears in that day's summary)
+- POST /api/checklists/:id/clear-checked — remove all checked items
+  (the running-list sweep after a shopping run)
 - POST /api/checklists/:id/items — { "text": "Eggs", "quantity": "1 dozen",
   "store": "Costco" }
   → "I need eggs from Costco tomorrow" = add item with store "Costco" AND

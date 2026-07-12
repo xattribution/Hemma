@@ -70,12 +70,16 @@ export function EventModal({ members, instance, defaultStart, onClose }: Props) 
   const isRecurring = !!instance?.rrule;
   const busy = create.isPending || update.isPending || remove.isPending;
 
-  const buildInput = (): EventInput => {
+  const buildInput = (): EventInput | null => {
     const [y, mo, d] = date.split("-").map(Number);
     const [sh, sm] = (allDay ? "00:00" : startTime).split(":").map(Number);
     const [eh, em] = (allDay ? "00:00" : endTime).split(":").map(Number);
     const startAt = new Date(y!, mo! - 1, d!, sh!, sm!).getTime();
     const endAt = allDay ? startAt + 24 * 3600_000 : new Date(y!, mo! - 1, d!, eh!, em!).getTime();
+    if (Number.isNaN(startAt) || Number.isNaN(endAt)) {
+      showToast("Pick a date and time first", "error");
+      return null;
+    }
     return {
       title, category, location, description, allDay,
       startAt, endAt,
@@ -86,12 +90,19 @@ export function EventModal({ members, instance, defaultStart, onClose }: Props) 
     };
   };
 
-  const onError = (err: Error) => showToast(err.message, "error");
+  const onError = (err: Error) => showToast(`Couldn't save: ${err.message}`, "error");
 
   const save = (scope: EditScope) => {
     const input = buildInput();
+    if (!input) return;
     if (!instance) {
-      create.mutate(input, { onSuccess: onClose, onError });
+      create.mutate(input, {
+        onSuccess: () => {
+          showToast(`"${input.title}" added to the calendar ✔`);
+          onClose();
+        },
+        onError,
+      });
       return;
     }
     const patch: Partial<EventInput> =

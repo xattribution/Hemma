@@ -29,7 +29,12 @@ export function DayModal({ day, members, canManageEvents, onAddEvent, onEventCli
   const memberById = new Map(members.map((m) => [m.id, m]));
 
   const dueTasks = (taskData?.tasks ?? []).filter((t) => t.dueToday);
-  const dueLists = (lists ?? []).filter((l) => l.needBy !== null && isSameDay(l.needBy, day));
+  const dayEventIds = new Set((instances ?? []).map((i) => i.id));
+  const dueLists = (lists ?? []).filter(
+    (l) =>
+      (l.needBy !== null && isSameDay(l.needBy, day)) ||
+      (l.linkedEventId !== null && dayEventIds.has(l.linkedEventId)),
+  );
 
   return (
     <Modal title={format(day, "EEEE, MMMM d")} onClose={onClose} wide>
@@ -116,7 +121,7 @@ export function DayModal({ day, members, canManageEvents, onAddEvent, onEventCli
         {/* Lists needed by this day */}
         {dueLists.length > 0 && (
           <section>
-            <h3 className="mb-1.5 text-xs font-extrabold uppercase tracking-wide text-ink-soft">Needed by today</h3>
+            <h3 className="mb-1.5 text-xs font-extrabold uppercase tracking-wide text-ink-soft">Lists for today</h3>
             <div className="space-y-1.5">
               {dueLists.map((list) => {
                 const done = list.items.filter((i) => i.checked).length;

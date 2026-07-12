@@ -174,6 +174,13 @@ export const useChecklists = () =>
     select: (d) => d.checklists,
   });
 
+export const useStores = () =>
+  useQuery({
+    queryKey: ["checklists", "stores"],
+    queryFn: () => api<{ stores: import("@coord/shared").StoreTag[] }>("/api/stores"),
+    select: (d) => d.stores,
+  });
+
 export function useChecklistMutations() {
   const qc = useQueryClient();
   const key = ["checklists"];
@@ -211,6 +218,11 @@ export function useChecklistMutations() {
     removeItem: useMutation({
       mutationFn: (args: { listId: string; itemId: string }) =>
         api(`/api/checklists/${args.listId}/items/${args.itemId}`, { method: "DELETE" }),
+      onSuccess: invalidate,
+    }),
+    clearChecked: useMutation({
+      mutationFn: (listId: string) =>
+        api<{ removed: number }>(`/api/checklists/${listId}/clear-checked`, { method: "POST" }),
       onSuccess: invalidate,
     }),
     // Optimistic check-off: flip locally, roll back on error.

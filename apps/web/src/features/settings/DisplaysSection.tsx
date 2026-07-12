@@ -108,19 +108,33 @@ function DisplayConfigEditor({ display, onChange }: { display: DisplayInfo; onCh
     </button>
   );
 
+  const layouts = [
+    ["dashboard", "📋 Daily summary"],
+    ["calendar", "📅 Full calendar"],
+    ["lists", "🛒 Lists"],
+  ] as const;
+
   return (
-    <div className="mt-2 flex flex-wrap items-center gap-1.5">
-      <span className="text-xs font-extrabold uppercase tracking-wide text-ink-soft">Shows:</span>
-      <button type="button"
-        onClick={() => set({ layout: config.layout === "dashboard" ? "calendar" : "dashboard" })}
-        className="rounded-full bg-coral-soft px-2.5 py-1 text-xs font-extrabold text-coral">
-        {config.layout === "dashboard" ? "📋 Dashboard" : "📅 Full calendar"}
-      </button>
-      <Toggle label="Events" value={config.showEvents} onToggle={() => set({ showEvents: !config.showEvents })} />
-      <Toggle label="Chores" value={config.showChores} onToggle={() => set({ showChores: !config.showChores })} />
-      <Toggle label="Lists" value={config.showLists} onToggle={() => set({ showLists: !config.showLists })} />
-      <Toggle label="🔐 Ask who's changing" value={config.requireAuthToChange}
-        onToggle={() => set({ requireAuthToChange: !config.requireAuthToChange })} />
+    <div className="mt-2 space-y-1.5">
+      <div className="flex flex-wrap items-center gap-1.5">
+        <span className="text-xs font-extrabold uppercase tracking-wide text-ink-soft">Screen:</span>
+        {layouts.map(([key, label]) => (
+          <button key={key} type="button" onClick={() => set({ layout: key })}
+            className={`rounded-full px-2.5 py-1 text-xs font-extrabold transition ${
+              config.layout === key ? "bg-coral text-white" : "bg-coral-soft text-coral"
+            }`}>
+            {label}
+          </button>
+        ))}
+      </div>
+      <div className="flex flex-wrap items-center gap-1.5">
+        <span className="text-xs font-extrabold uppercase tracking-wide text-ink-soft">Shows:</span>
+        <Toggle label="Events" value={config.showEvents} onToggle={() => set({ showEvents: !config.showEvents })} />
+        <Toggle label="Chores" value={config.showChores} onToggle={() => set({ showChores: !config.showChores })} />
+        <Toggle label="Lists" value={config.showLists} onToggle={() => set({ showLists: !config.showLists })} />
+        <Toggle label="🔐 Ask who's changing" value={config.requireAuthToChange}
+          onToggle={() => set({ requireAuthToChange: !config.requireAuthToChange })} />
+      </div>
     </div>
   );
 }

@@ -16,7 +16,7 @@ export function TasksPage({ me }: { me: Extract<Me, { kind: "member" }> }) {
   const mutations = useTaskMutations();
   const [editing, setEditing] = useState<Task | "new" | null>(null);
   const [swapping, setSwapping] = useState<Task | null>(null);
-  const isParent = can(me.member.role, "task.manage");
+  const isParent = can(me.member.role, "task.manage", me.member.grants);
 
   const tasks = (data?.tasks ?? []).filter((t) => t.dueToday || !t.completed);
   const columns: { member: Member | null; tasks: Task[] }[] = [

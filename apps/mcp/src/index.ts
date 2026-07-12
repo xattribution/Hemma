@@ -341,20 +341,32 @@ server.tool(
 
 server.tool(
   "update_checklist",
-  "Update a list: rename, pin/unpin from displays, or set/clear its need-by date.",
+  "Update a list: rename, pin/unpin from displays, set/clear its need-by date, or link it to a calendar event (it then shows on that event's days).",
   {
     list: z.string(),
     title: z.string().optional(),
     pinned_to_displays: z.boolean().optional(),
     need_by_date: z.string().nullable().optional().describe("YYYY-MM-DD, or null to clear"),
+    linked_event_id: z.string().nullable().optional().describe("event id from list_events, or null to unlink"),
   },
-  async ({ list, title, pinned_to_displays, need_by_date }) => {
+  async ({ list, title, pinned_to_displays, need_by_date, linked_event_id }) => {
     const target = await resolveList(list);
     const body: Record<string, unknown> = {};
     if (title !== undefined) body.title = title;
     if (pinned_to_displays !== undefined) body.pinnedToDashboard = pinned_to_displays;
     if (need_by_date !== undefined) body.needBy = need_by_date ? await toMs(need_by_date, "12:00") : null;
+    if (linked_event_id !== undefined) body.linkedEventId = linked_event_id;
     return ok(await api(`/api/checklists/${target.id}`, { method: "PATCH", body }));
+  },
+);
+
+server.tool(
+  "clear_checked_items",
+  "Remove all checked-off items from a list — the after-shopping sweep on a running list like Groceries.",
+  { list: z.string() },
+  async ({ list }) => {
+    const target = await resolveList(list);
+    return ok(await api(`/api/checklists/${target.id}/clear-checked`, { method: "POST" }));
   },
 );
 

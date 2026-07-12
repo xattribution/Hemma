@@ -87,7 +87,7 @@ export const loginInputSchema = z.object({
 
 /** What a shared display (kitchen tablet, living-room screen…) shows. */
 export const displayConfigSchema = z.object({
-  layout: z.enum(["dashboard", "calendar"]).default("dashboard"),
+  layout: z.enum(["dashboard", "calendar", "lists"]).default("dashboard"),
   showEvents: z.boolean().default(true),
   showChores: z.boolean().default(true),
   showLists: z.boolean().default(true),
@@ -202,8 +202,21 @@ export const checklistInputSchema = z.object({
   pinnedToDashboard: z.boolean().default(false),
   /** Optional deadline (UTC ms) — the list surfaces in that day's summary. */
   needBy: z.number().int().nullable().default(null),
+  /** Optional event link — the list rides along with the event's day(s). */
+  linkedEventId: z.string().nullable().default(null),
 });
 export type ChecklistInput = z.infer<typeof checklistInputSchema>;
+
+/** Colors for store quick-tags; assigned deterministically when a store is first used. */
+export const STORE_COLORS = [
+  "#3d87c9", "#5aa832", "#e08f3c", "#7a6fd0", "#c364ab",
+  "#2f9e8f", "#d9a900", "#e05d5d", "#5a7d8c", "#8a6d4f",
+] as const;
+
+export interface StoreTag {
+  name: string;
+  color: string;
+}
 
 export const checklistItemInputSchema = z.object({
   text: z.string().trim().min(1).max(200),
@@ -227,6 +240,8 @@ export type ChecklistItem = z.infer<typeof checklistItemSchema>;
 export const checklistSchema = checklistInputSchema.extend({
   id: z.string(),
   items: z.array(checklistItemSchema),
+  /** Title of the linked event, resolved server-side for display. */
+  linkedEventTitle: z.string().nullable(),
 });
 export type Checklist = z.infer<typeof checklistSchema>;
 

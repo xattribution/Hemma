@@ -20,10 +20,13 @@ screen on iPhone and Android alike and runs full-screen on a kitchen display.
   4-digit PIN from an avatar picker; parents manage, kids do
 - **Chores & to-dos** — daily/weekday/weekend repeats, points, tap-to-complete,
   and one-tap **swap** ("you take dishes, I'll walk the dog")
-- **Lists** — shared shopping/packing lists with quantities and **store tags**
-  ("Milk x2 @Costco"), tap-to-retag, per-store filters, optional **need-by
-  dates** that surface the list in that day's summary, live check-off from
-  any device, pin to displays
+- **Lists** — three flavors: **running** (groceries — add, check off, "clear
+  done", repeat), **dated** (need-by deadline, surfaces in that day's
+  summary), and **event-linked** (a packing list that rides along with the
+  beach trip). Structured quick-add (item / qty / store), **colored store
+  quick-tags** that auto-save the first time you use a store, per-store
+  filters, and one-tap **sharing** (phone share sheet, clipboard, email, or a
+  QR code any camera can scan)
 - **Day summary hub** — tap any date for that day's events, chores and dated
   lists in one panel, and add events right from it; today's chores live on
   the calendar page too (collapsible)

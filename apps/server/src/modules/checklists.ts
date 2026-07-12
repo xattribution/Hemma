@@ -1,5 +1,4 @@
-import { z } from "zod";
-import { checklistInputSchema, checklistItemInputSchema, type Checklist } from "@coord/shared";
+import { checklistInputSchema, checklistItemInputSchema, STORE_COLORS, type Checklist, type StoreTag } from "@coord/shared";
 import type { CoreModule } from "../core/plugin-host.js";
 import { requireAccess, requireActor } from "../core/auth.js";
 import { actorOf } from "../core/actor.js";
@@ -16,14 +15,18 @@ interface ChecklistRow {
   kind: "shopping" | "checklist" | "packing";
   pinned_to_dashboard: number;
   need_by: number | null;
+  linked_event_id: string | null;
+  linked_event_title: string | null;
 }
 
 export function loadChecklists(db: Db, householdId: string, onlyPinned = false): Checklist[] {
   const rows = db
     .prepare(
-      `SELECT id, title, icon, kind, pinned_to_dashboard, need_by FROM checklists
-       WHERE household_id = ? AND deleted_at IS NULL ${onlyPinned ? "AND pinned_to_dashboard = 1" : ""}
-       ORDER BY sort_order, created_at`,
+      `SELECT c.id, c.title, c.icon, c.kind, c.pinned_to_dashboard, c.need_by, c.linked_event_id,
+              e.title AS linked_event_title
+       FROM checklists c LEFT JOIN events e ON e.id = c.linked_event_id AND e.deleted_at IS NULL
+       WHERE c.household_id = ? AND c.deleted_at IS NULL ${onlyPinned ? "AND c.pinned_to_dashboard = 1" : ""}
+       ORDER BY c.sort_order, c.created_at`,
     )
     .all(householdId) as ChecklistRow[];
   const itemsStmt = db.prepare(
@@ -36,6 +39,8 @@ export function loadChecklists(db: Db, householdId: string, onlyPinned = false):
     kind: row.kind,
     pinnedToDashboard: !!row.pinned_to_dashboard,
     needBy: row.need_by,
+    linkedEventId: row.linked_event_id,
+    linkedEventTitle: row.linked_event_title,
     items: (itemsStmt.all(row.id) as {
       id: string; text: string; checked: number; checked_by: string | null;
       quantity: string | null; store: string | null; sort_order: number;
@@ -55,8 +60,43 @@ export const checklistsModule: CoreModule = {
   id: "core.checklists",
   name: "Lists",
   description: "Shopping lists, packing lists and checklists the whole family shares.",
-  register({ app, db, bus, broadcast }) {
+  register({ app, db, bus, broadcast, settings }) {
     const invalidateLists = () => broadcast({ type: "invalidate", keys: ["checklists", "dashboard"] });
+
+    // ---- Store quick-tags: auto-registered on first use, stable colors ----
+    const registerStore = (name: string | null | undefined) => {
+      if (!name) return;
+      const stores = settings.get<StoreTag[]>("stores", []);
+      if (stores.some((s) => s.name.toLowerCase() === name.toLowerCase())) return;
+      const hash = [...name.toLowerCase()].reduce((h, c) => (h * 31 + c.charCodeAt(0)) >>> 0, 7);
+      // Prefer an unused color; fall back to the hash pick when all are taken.
+      const used = new Set(stores.map((s) => s.color));
+      const color = STORE_COLORS.find((c) => !used.has(c)) ?? STORE_COLORS[hash % STORE_COLORS.length]!;
+      settings.set("stores", [...stores, { name, color }]);
+      invalidateLists();
+    };
+
+    app.get("/api/stores", (req, reply) => {
+      if (!requireAccess(db, req, reply)) return;
+      // Self-heal: pick up stores already used on items (pre-registry data).
+      const known = new Set(settings.get<StoreTag[]>("stores", []).map((s) => s.name.toLowerCase()));
+      const used = db
+        .prepare("SELECT DISTINCT store FROM checklist_items WHERE store IS NOT NULL AND store != ''")
+        .all() as { store: string }[];
+      for (const { store } of used) {
+        if (!known.has(store.toLowerCase())) registerStore(store);
+      }
+      return { stores: settings.get<StoreTag[]>("stores", []) };
+    });
+
+    app.delete("/api/stores/:name", (req, reply) => {
+      if (!requireActor(db, req, reply, "checklist.manage")) return;
+      const { name } = req.params as { name: string };
+      const stores = settings.get<StoreTag[]>("stores", []);
+      settings.set("stores", stores.filter((s) => s.name.toLowerCase() !== name.toLowerCase()));
+      invalidateLists();
+      return { ok: true };
+    });
 
     app.get("/api/checklists", (req, reply) => {
       if (!requireAccess(db, req, reply)) return;
@@ -71,8 +111,8 @@ export const checklistsModule: CoreModule = {
       if (!input) return;
       const id = uid();
       db.prepare(
-        "INSERT INTO checklists (id, household_id, title, icon, kind, pinned_to_dashboard, need_by, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
-      ).run(id, access.householdId, input.title, input.icon, input.kind, input.pinnedToDashboard ? 1 : 0, input.needBy, now());
+        "INSERT INTO checklists (id, household_id, title, icon, kind, pinned_to_dashboard, need_by, linked_event_id, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+      ).run(id, access.householdId, input.title, input.icon, input.kind, input.pinnedToDashboard ? 1 : 0, input.needBy, input.linkedEventId, now());
       recordAudit(db, access.householdId, actorOf(access), "checklist", id, "create",
         `${access.name} started the "${input.title}" list`);
       invalidateLists();
@@ -91,12 +131,13 @@ export const checklistsModule: CoreModule = {
         reply.code(404).send({ error: "List not found" });
         return;
       }
-      db.prepare("UPDATE checklists SET title = ?, icon = ?, kind = ?, pinned_to_dashboard = ?, need_by = ? WHERE id = ?").run(
+      db.prepare("UPDATE checklists SET title = ?, icon = ?, kind = ?, pinned_to_dashboard = ?, need_by = ?, linked_event_id = ? WHERE id = ?").run(
         patch.title ?? row.title,
         patch.icon ?? row.icon,
         patch.kind ?? row.kind,
         (patch.pinnedToDashboard ?? !!row.pinned_to_dashboard) ? 1 : 0,
         patch.needBy !== undefined ? patch.needBy : row.need_by,
+        patch.linkedEventId !== undefined ? patch.linkedEventId : row.linked_event_id,
         id,
       );
       invalidateLists();
@@ -136,6 +177,7 @@ export const checklistsModule: CoreModule = {
       db.prepare(
         "INSERT INTO checklist_items (id, checklist_id, text, quantity, store, sort_order, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)",
       ).run(itemId, id, input.text, input.quantity, input.store, maxOrder + 1, now());
+      registerStore(input.store);
       recordAudit(db, access.householdId, actorOf(access), "checklist", id, "create",
         `${access.name} added "${input.text}"${input.store ? ` (${input.store})` : ""} to ${list.title}`);
       invalidateLists();
@@ -163,6 +205,7 @@ export const checklistsModule: CoreModule = {
         patch.store !== undefined ? patch.store : item.store,
         itemId,
       );
+      if (patch.store) registerStore(patch.store);
       invalidateLists();
       return { ok: true };
     });
@@ -178,6 +221,29 @@ export const checklistsModule: CoreModule = {
       db.prepare("DELETE FROM checklist_items WHERE id = ? AND checklist_id = ?").run(itemId, id);
       invalidateLists();
       return { ok: true };
+    });
+
+    // Running lists (groceries): sweep away everything already bought.
+    app.post("/api/checklists/:id/clear-checked", (req, reply) => {
+      const access = requireActor(db, req, reply, "checklist.check");
+      if (!access) return;
+      if (access.kind === "device") {
+        reply.code(403).send({ error: "This display can't do that" });
+        return;
+      }
+      const { id } = req.params as { id: string };
+      const list = db.prepare("SELECT title FROM checklists WHERE id = ? AND deleted_at IS NULL").get(id) as { title: string } | undefined;
+      if (!list) {
+        reply.code(404).send({ error: "List not found" });
+        return;
+      }
+      const removed = db.prepare("DELETE FROM checklist_items WHERE checklist_id = ? AND checked = 1").run(id).changes;
+      if (removed > 0) {
+        recordAudit(db, access.householdId, actorOf(access), "checklist", id, "update",
+          `${access.name} cleared ${removed} done item${removed === 1 ? "" : "s"} off ${list.title}`);
+      }
+      invalidateLists();
+      return { removed };
     });
 
     app.post("/api/checklists/:id/items/:itemId/toggle", (req, reply) => {
