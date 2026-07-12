@@ -19,8 +19,12 @@ export function TasksPage({ me }: { me: Extract<Me, { kind: "member" }> }) {
   const isParent = can(me.member.role, "task.manage", me.member.grants);
 
   const tasks = (data?.tasks ?? []).filter((t) => t.dueToday || !t.completed);
+  // Your own column comes first (kids see their chores right away).
+  const ordered = [...(members ?? [])].sort((a, b) =>
+    a.id === me.member.id ? -1 : b.id === me.member.id ? 1 : 0,
+  );
   const columns: { member: Member | null; tasks: Task[] }[] = [
-    ...(members ?? []).map((member) => ({ member, tasks: tasks.filter((t) => t.assigneeId === member.id) })),
+    ...ordered.map((member) => ({ member, tasks: tasks.filter((t) => t.assigneeId === member.id) })),
     { member: null, tasks: tasks.filter((t) => !t.assigneeId) },
   ];
 
@@ -81,10 +85,22 @@ export function TasksPage({ me }: { me: Extract<Me, { kind: "member" }> }) {
                   </button>
                   <div className="min-w-0 flex-1">
                     <p className={`truncate text-sm font-bold ${task.completed ? "line-through" : ""}`}>{task.title}</p>
-                    {task.steps.length > 0 && !task.completed && (
-                      <p className="truncate text-[11px] font-semibold text-ink-soft">
-                        {task.steps.map((step, i) => `${i + 1}. ${step}`).join("  ")}
-                      </p>
+                    {task.steps.length > 0 && (
+                      <div className="mt-0.5 space-y-0.5">
+                        {task.steps.map((step, i) => {
+                          const stepDone = task.stepsDone.includes(i);
+                          return (
+                            <button key={i} type="button"
+                              onClick={() => mutations.toggleStep.mutate({ id: task.id, stepIndex: i, occurrenceDate: task.occurrenceDate })}
+                              className="flex w-full items-center gap-1.5 rounded-md px-1 py-0.5 text-left text-[11px] font-semibold hover:bg-cream">
+                              <span className={`flex h-3.5 w-3.5 items-center justify-center rounded-full border ${
+                                stepDone ? "border-leaf bg-leaf text-white" : "border-line bg-cream"
+                              }`}>{stepDone ? "✓" : ""}</span>
+                              <span className={stepDone ? "text-ink-soft line-through" : "text-ink-soft"}>{step}</span>
+                            </button>
+                          );
+                        })}
+                      </div>
                     )}
                     <p className="text-[11px] font-semibold text-ink-soft">
                       {task.repeat === "daily" ? "Every day" : task.repeat === "weekdays" ? "Weekdays" : task.repeat ? "Weekly" : "One-time"}

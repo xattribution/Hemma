@@ -71,8 +71,8 @@ export function App() {
           <Route path="/calendar/:view/:date" element={<CalendarPage />} />
           <Route path="/chores" element={<TasksPage me={me.data} />} />
           <Route path="/lists" element={<ListsPage me={me.data} />} />
-          <Route path="/history" element={<HistoryPage />} />
-          <Route path="/settings" element={<SettingsPage me={me.data} />} />
+          {me.data.member.role !== "child" && <Route path="/history" element={<HistoryPage />} />}
+          {me.data.member.role !== "child" && <Route path="/settings" element={<SettingsPage me={me.data} />} />}
           <Route path="*" element={<Navigate to="/calendar" replace />} />
         </Route>
       </Routes>

@@ -5,7 +5,7 @@ import crypto from "node:crypto";
 
 export type Db = Database.Database;
 
-const SCHEMA_VERSION = 6;
+const SCHEMA_VERSION = 7;
 
 const SCHEMA = /* sql */ `
 CREATE TABLE households (
@@ -281,6 +281,15 @@ function migrate(db: Db) {
     // Chore steps: "Clean the living room" carries its sub-steps as part of
     // the one chore (what to do, not separate assignments).
     db.exec("ALTER TABLE tasks ADD COLUMN steps_json TEXT;");
+  }
+  if (version < 7) {
+    // Checkable chore steps: per-occurrence progress; all done => chore done.
+    db.exec(`CREATE TABLE step_checks (
+      task_id TEXT NOT NULL,
+      occurrence_date TEXT NOT NULL DEFAULT '',
+      step_index INTEGER NOT NULL,
+      PRIMARY KEY (task_id, occurrence_date, step_index)
+    );`);
   }
   db.pragma(`user_version = ${SCHEMA_VERSION}`);
 }

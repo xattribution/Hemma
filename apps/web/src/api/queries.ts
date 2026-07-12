@@ -164,6 +164,13 @@ export function useTaskMutations() {
         api(`/api/tasks/${args.id}/reassign`, { method: "POST", body: { toMemberId: args.toMemberId } }),
       onSuccess: invalidate,
     }),
+    toggleStep: useMutation({
+      mutationFn: (args: { id: string; stepIndex: number; occurrenceDate: string | null }) =>
+        api(`/api/tasks/${args.id}/steps/${args.stepIndex}/toggle`, {
+          method: "POST", body: { occurrenceDate: args.occurrenceDate },
+        }),
+      onSuccess: invalidate,
+    }),
   };
 }
 

@@ -229,9 +229,23 @@ function DisplayCards({ config }: { config: DisplayConfig }) {
                       </span>
                       <span className="min-w-0">
                         <span className={`block font-bold ${task.completed ? "line-through" : ""}`}>{task.title}</span>
-                        {task.steps.length > 0 && !task.completed && (
-                          <span className="block truncate text-xs font-semibold text-ink-soft">
-                            {task.steps.join(" → ")}
+                        {task.steps.length > 0 && (
+                          <span className="mt-0.5 flex flex-wrap gap-1">
+                            {task.steps.map((step, i) => {
+                              const stepDone = task.stepsDone.includes(i);
+                              return (
+                                <button key={i} type="button"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    void ensure().then((ok) => ok && tasks.toggleStep.mutate({ id: task.id, stepIndex: i, occurrenceDate: task.occurrenceDate }));
+                                  }}
+                                  className={`rounded-full border px-2 py-0.5 text-[11px] font-bold ${
+                                    stepDone ? "border-leaf/50 bg-leaf/15 text-ink-soft line-through" : "border-line bg-card"
+                                  }`}>
+                                  {step}
+                                </button>
+                              );
+                            })}
                           </span>
                         )}
                       </span>

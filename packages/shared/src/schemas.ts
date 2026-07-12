@@ -186,6 +186,8 @@ export const taskSchema = taskInputSchema.extend({
   createdBy: z.string().nullable(),
   /** ISO date (YYYY-MM-DD, household tz) this occurrence refers to; null for one-off. */
   occurrenceDate: z.string().nullable(),
+  /** Indices of steps checked off for this occurrence. */
+  stepsDone: z.array(z.number().int()),
   dueToday: z.boolean(),
   completed: z.boolean(),
   completedBy: z.string().nullable(),

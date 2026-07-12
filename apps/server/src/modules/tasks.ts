@@ -53,6 +53,9 @@ export function listTasksFor(db: Db, householdId: string, isoDate: string, tz: s
     const completion = db
       .prepare("SELECT completed_by, completed_at FROM task_completions WHERE task_id = ? AND occurrence_date = ?")
       .get(row.id, occurrenceKey) as { completed_by: string | null; completed_at: number } | undefined;
+    const stepsDone = (db
+      .prepare("SELECT step_index FROM step_checks WHERE task_id = ? AND occurrence_date = ?")
+      .all(row.id, occurrenceKey) as { step_index: number }[]).map((r) => r.step_index);
     tasks.push({
       id: row.id,
       title: row.title,
@@ -64,6 +67,7 @@ export function listTasksFor(db: Db, householdId: string, isoDate: string, tz: s
       repeat: row.repeat,
       points: row.points,
       steps: row.steps_json ? (JSON.parse(row.steps_json) as string[]) : [],
+      stepsDone,
       createdBy: row.created_by,
       occurrenceDate: recurring ? isoDate : null,
       dueToday: recurring ? true : row.due_at === null || isoDateOf(row.due_at, tz) <= isoDate,
@@ -91,13 +95,17 @@ export function completeTask(
   const existing = db
     .prepare("SELECT 1 FROM task_completions WHERE task_id = ? AND occurrence_date = ?")
     .get(taskId, key);
+  const steps = row.steps_json ? (JSON.parse(row.steps_json) as string[]) : [];
   if (existing) {
     db.prepare("DELETE FROM task_completions WHERE task_id = ? AND occurrence_date = ?").run(taskId, key);
+    db.prepare("DELETE FROM step_checks WHERE task_id = ? AND occurrence_date = ?").run(taskId, key);
     recordAudit(db, householdId, actor, "task", taskId, "uncomplete", `${actor.name} unchecked "${row.title}"`);
   } else {
     db.prepare(
       "INSERT INTO task_completions (task_id, occurrence_date, completed_by, completed_at) VALUES (?, ?, ?, ?)",
     ).run(taskId, key, actor.memberId, now());
+    const insertStep = db.prepare("INSERT OR IGNORE INTO step_checks (task_id, occurrence_date, step_index) VALUES (?, ?, ?)");
+    steps.forEach((_, index) => insertStep.run(taskId, key, index));
     recordAudit(db, householdId, actor, "task", taskId, "complete", `${actor.name} completed "${row.title}" 🎉`);
   }
   bus.emit("task.completed", { taskId, title: row.title, occurrenceDate: key || null, actor });
@@ -187,6 +195,45 @@ export const tasksModule: CoreModule = {
       const body = parse(z.object({ occurrenceDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).nullable().default(null) }), req.body ?? {}, reply);
       if (!body) return;
       return completeTask(db, bus, access.householdId, actorOf(access), (req.params as { id: string }).id, body.occurrenceDate);
+    });
+
+    // Check off one step of a chore; when the last step lands, the chore
+    // completes itself (and unchecking a step reopens it).
+    app.post("/api/tasks/:id/steps/:index/toggle", (req, reply) => {
+      const access = requireActor(db, req, reply, "task.complete");
+      if (!access) return;
+      const body = parse(z.object({ occurrenceDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).nullable().default(null) }), req.body ?? {}, reply);
+      if (!body) return;
+      const { id, index } = req.params as { id: string; index: string };
+      const stepIndex = Number.parseInt(index, 10);
+      const row = db.prepare("SELECT * FROM tasks WHERE id = ? AND deleted_at IS NULL").get(id) as TaskRow | undefined;
+      if (!row) {
+        reply.code(404).send({ error: "Task not found" });
+        return;
+      }
+      const steps = row.steps_json ? (JSON.parse(row.steps_json) as string[]) : [];
+      if (Number.isNaN(stepIndex) || stepIndex < 0 || stepIndex >= steps.length) {
+        reply.code(400).send({ error: "No such step" });
+        return;
+      }
+      const key = row.repeat !== null ? (body.occurrenceDate ?? "") : "";
+      const done = db.prepare("SELECT 1 FROM step_checks WHERE task_id = ? AND occurrence_date = ? AND step_index = ?")
+        .get(id, key, stepIndex);
+      if (done) db.prepare("DELETE FROM step_checks WHERE task_id = ? AND occurrence_date = ? AND step_index = ?").run(id, key, stepIndex);
+      else db.prepare("INSERT INTO step_checks (task_id, occurrence_date, step_index) VALUES (?, ?, ?)").run(id, key, stepIndex);
+
+      const doneCount = (db.prepare("SELECT COUNT(*) AS c FROM step_checks WHERE task_id = ? AND occurrence_date = ?")
+        .get(id, key) as { c: number }).c;
+      const completed = !!db.prepare("SELECT 1 FROM task_completions WHERE task_id = ? AND occurrence_date = ?").get(id, key);
+      if (doneCount === steps.length && !completed) {
+        completeTask(db, bus, access.householdId, actorOf(access), id, key || null);
+      } else if (doneCount < steps.length && completed) {
+        db.prepare("DELETE FROM task_completions WHERE task_id = ? AND occurrence_date = ?").run(id, key);
+        bus.emit("task.completed", { taskId: id, title: row.title, occurrenceDate: key || null, actor: actorOf(access) });
+      } else {
+        bus.emit("task.completed", { taskId: id, title: row.title, occurrenceDate: key || null, actor: actorOf(access) });
+      }
+      return { ok: true };
     });
 
     // Kids can swap chores between themselves — "super simple reassigning".
