@@ -1,0 +1,29 @@
+# Coord relay — the zero-knowledge rendezvous for family federation.
+# Run this on your VPS (e.g. coord.tinbadger.com):
+#
+#   git clone https://github.com/xattribution/coord.git && cd coord/deploy/relay
+#   RELAY_DOMAIN=coord.tinbadger.com docker compose up -d --build
+#
+# That's the whole deployment. RAM-only, no volumes for the relay itself,
+# no logs; Caddy fetches/renews the Let's Encrypt certificate automatically
+# (ports 80/443 must reach this box).
+services:
+  relay:
+    build:
+      context: ../../apps/relay
+    restart: unless-stopped
+
+  caddy:
+    image: caddy:2
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    environment:
+      - RELAY_DOMAIN=${RELAY_DOMAIN:-coord.tinbadger.com}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data
+
+volumes:
+  caddy-data: # TLS certificates only — the relay itself stores nothing

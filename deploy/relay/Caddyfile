@@ -1,0 +1,4 @@
+{$RELAY_DOMAIN:coord.tinbadger.com} {
+    reverse_proxy relay:8790
+    encode gzip
+}
