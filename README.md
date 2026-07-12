@@ -60,7 +60,7 @@ Then:
 ```bash
 pnpm install
 pnpm seed        # demo family: Jared/Sam (password family123), Mia (PIN 1111), Leo (PIN 2222)
-pnpm dev         # server :3000 + web :5173 (proxied)
+pnpm dev         # API :49733 + web :5173 (proxied; open :5173)
 ```
 
 Open http://localhost:5173. Tests and typechecks:
@@ -80,8 +80,8 @@ Two containers start: the app (API + web, SQLite in the `coord-data` volume)
 and Caddy for HTTPS — which is **required** for the installable app and push
 notifications.
 
-**Just want a first look?** Uncomment the `ports: ["3000:3000"]` lines on the
-`app` service in `docker-compose.yml` and browse `http://<server-ip>:3000` —
+**Just want a first look?** Uncomment the `ports: ["49733:49733"]` lines on the
+`app` service in `docker-compose.yml` and browse `http://<server-ip>:49733` —
 everything works over plain HTTP except home-screen install and push.
 
 **LAN-only (default):** the site is served at `https://coord.local` with a

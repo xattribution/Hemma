@@ -17,9 +17,9 @@ RUN pnpm build
 ENV NODE_ENV=production \
     DATABASE_PATH=/data/coord.db \
     WEB_DIST=/app/apps/web/dist \
-    PORT=3000
+    PORT=49733
 
-EXPOSE 3000
+EXPOSE 49733
 VOLUME /data
 
 WORKDIR /app/apps/server

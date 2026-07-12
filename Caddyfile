@@ -8,7 +8,7 @@
 #   point coord.local at your server's IP in your router / hosts file.
 
 {$COORD_DOMAIN:coord.local} {
-    reverse_proxy app:3000
+    reverse_proxy app:49733
     # Delete the next line when COORD_DOMAIN is a real public domain so
     # Caddy uses Let's Encrypt instead of its internal CA.
     tls internal

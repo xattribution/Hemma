@@ -7,11 +7,11 @@ services:
       - TZ=${TZ:-America/New_York}
     volumes:
       - coord-data:/data # the whole family database — back this folder up
-    # For a quick first look over plain HTTP (http://<server-ip>:3000),
+    # For a quick first look over plain HTTP (http://<server-ip>:49733),
     # uncomment the next two lines. Note: installing the app to a phone's
     # home screen and push notifications require HTTPS via Caddy below.
     # ports:
-    #   - "3000:3000"
+    #   - "49733:49733"
 
   caddy:
     image: caddy:2

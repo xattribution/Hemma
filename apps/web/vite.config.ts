@@ -32,9 +32,10 @@ export default defineConfig({
   ],
   server: {
     port: 5173,
+    host: true, // reachable from other devices on the LAN during dev
     proxy: {
       "/api": {
-        target: "http://localhost:3000",
+        target: "http://localhost:49733",
         ws: true,
       },
     },
