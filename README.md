@@ -34,7 +34,28 @@ screen on iPhone and Android alike and runs full-screen on a kitchen display.
 - **Plugin architecture** — the seams for what's next (see roadmap) are built
   and already used by the core features themselves
 
+## Get the code
+
+The app currently lives on the `claude/family-coordination-calendar-bs4zqo` branch:
+
+```bash
+git clone -b claude/family-coordination-calendar-bs4zqo https://github.com/xattribution/coord.git
+cd coord
+```
+
+To just **run** Coord on a server, skip straight to [Production (Docker)](#production-docker) —
+no Node or pnpm needed on the host.
+
 ## Quick start (development)
+
+Prerequisites: **Node 22+** and **pnpm 10** (the `npm`/`node` from apt are too old):
+
+```bash
+curl -fsSL https://deb.nodesource.com/setup_22.x | bash - && apt-get install -y nodejs
+corepack enable && corepack prepare pnpm@10 --activate
+```
+
+Then:
 
 ```bash
 pnpm install
@@ -58,6 +79,10 @@ docker compose up -d --build
 Two containers start: the app (API + web, SQLite in the `coord-data` volume)
 and Caddy for HTTPS — which is **required** for the installable app and push
 notifications.
+
+**Just want a first look?** Uncomment the `ports: ["3000:3000"]` lines on the
+`app` service in `docker-compose.yml` and browse `http://<server-ip>:3000` —
+everything works over plain HTTP except home-screen install and push.
 
 **LAN-only (default):** the site is served at `https://coord.local` with a
 certificate from Caddy's internal CA. Point `coord.local` at your server's IP
