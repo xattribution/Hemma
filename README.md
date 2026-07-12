@@ -90,39 +90,21 @@ pnpm typecheck
 docker compose up -d --build
 ```
 
-Two containers start: the app (API + web, SQLite in the `coord-data` volume)
-and Caddy for HTTPS — which is **required** for the installable app and push
-notifications.
+One container: the app (API + web UI) on port **49733**, SQLite in the
+`coord-data` volume. Browse `http://<server-ip>:49733` to run the setup
+wizard.
 
-**Just want a first look (or LAN-only HTTP)?** Create a
-`docker-compose.override.yml` next to `docker-compose.yml` (git-ignored, so
-pulls never conflict):
+**HTTPS (required for home-screen install & push):** put your reverse proxy
+in front — Nginx Proxy Manager, Caddy, Traefik, whatever you already run —
+and proxy your domain to `http://<host>:49733` with **WebSocket support
+enabled** (live sync runs on `/api/ws`). On Nginx Proxy Manager: new proxy
+host → forward to the host IP, port 49733, toggle WebSockets Support, request
+a certificate, Force SSL. If idle wall displays ever stall, add
+`proxy_read_timeout 3600s;` in the Advanced tab.
 
-```yaml
-services:
-  app:
-    ports:
-      - "49733:49733"
-```
-
-then `docker compose up -d` and browse `http://<server-ip>:49733` —
-everything works over plain HTTP except home-screen install and push.
-
-**LAN-only (default):** the site is served at `https://coord.local` with a
-certificate from Caddy's internal CA. Point `coord.local` at your server's IP
-(router DNS entry or each device's hosts file) and install Caddy's root cert
-on family devices once: it's at `/data/caddy/pki/authorities/local/root.crt`
-inside the `caddy-data` volume.
-
-**Going online (recommended, easiest for phones):** get a free subdomain from
-DuckDNS (or use your own domain), forward ports 80/443 to your server, then:
-
-```bash
-COORD_DOMAIN=yourfamily.duckdns.org docker compose up -d
-```
-
-…and delete the `tls internal` line from the `Caddyfile`. Caddy fetches and
-renews a Let's Encrypt certificate automatically.
+**Relay (federation rendezvous):** see [apps/relay](apps/relay/README.md) —
+`cd deploy/relay && docker compose up -d --build` publishes it on port
+8790 for your reverse proxy (or `--profile caddy` for bundled auto-HTTPS).
 
 **Backup:** copy the `coord-data` volume (a single SQLite file + WAL). That's
 the whole family database.

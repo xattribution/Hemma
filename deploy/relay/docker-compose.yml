@@ -1,25 +1,23 @@
 # Coord relay — the zero-knowledge rendezvous for family federation.
-# Run this on your VPS (e.g. coord.tinbadger.com):
 #
-#   git clone https://github.com/xattribution/coord.git && cd coord/deploy/relay
-#   RELAY_DOMAIN=coord.tinbadger.com docker compose up -d --build
+# Behind your own reverse proxy (Nginx Proxy Manager, Traefik…):
+#   docker compose up -d --build
+#   → proxy https://coord.tinbadger.com → http://<host>:8790
 #
-# That's the whole deployment. RAM-only, no volumes for the relay itself,
-# no logs; Caddy fetches/renews the Let's Encrypt certificate automatically
-# (ports 80/443 must reach this box).
+# No reverse proxy on the box? Use the bundled Caddy for automatic HTTPS:
+#   RELAY_DOMAIN=coord.tinbadger.com docker compose --profile caddy up -d --build
+#
+# The relay is RAM-only: no volumes, no logs, sealed blobs only.
 services:
   relay:
     build:
       context: ../../apps/relay
     restart: unless-stopped
-    # Using your own reverse proxy (Nginx Proxy Manager, Traefik…) instead of
-    # the bundled Caddy? Uncomment to publish the relay port, proxy
-    # https://your-domain → http://<host>:8790, and start only this service:
-    #   docker compose up -d --build relay
-    # ports:
-    #   - "8790:8790"
+    ports:
+      - "8790:8790"
 
   caddy:
+    profiles: ["caddy"]
     image: caddy:2
     restart: unless-stopped
     ports:

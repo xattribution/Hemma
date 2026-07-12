@@ -5,45 +5,15 @@ services:
     environment:
       # Set to your family's timezone; new households default to the browser's.
       - TZ=${TZ:-America/New_York}
+    ports:
+      - "49733:49733"
     volumes:
       - coord-data:/data # the whole family database — back this folder up
-    # To browse over plain HTTP (http://<server-ip>:49733), create a
-    # docker-compose.override.yml next to this file (kept out of git, so
-    # pulls never conflict):
-    #
-    #   services:
-    #     app:
-    #       ports:
-    #         - "49733:49733"
-    #
-    # Note: installing the app to a phone's home screen and push
-    # notifications require HTTPS via Caddy below.
 
-  caddy:
-    image: caddy:2
-    restart: unless-stopped
-    ports:
-      - "80:80"
-      - "443:443"
-    environment:
-      # LAN-only default. For remote access + real HTTPS, set COORD_DOMAIN to
-      # your domain (e.g. a free DuckDNS name) — see README "Going online".
-      - COORD_DOMAIN=${COORD_DOMAIN:-coord.local}
-    volumes:
-      - ./Caddyfile:/etc/caddy/Caddyfile:ro
-      - caddy-data:/data
-      - caddy-config:/config
-
-  # Optional: run the zero-knowledge federation relay (usually on a separate
-  # VPS, e.g. coord.tinbadger.com behind Caddy). RAM-only, no logs.
-  # relay:
-  #   image: node:22-slim
-  #   command: node /relay/src/index.mjs
-  #   volumes: [ "./apps/relay:/relay:ro" ]
-  #   ports: [ "8790:8790" ]
-  #   restart: unless-stopped
+  # HTTPS: put your reverse proxy of choice in front (Nginx Proxy Manager,
+  # Caddy, Traefik…) → proxy your domain to http://<host>:49733 with
+  # WebSocket support enabled (live sync runs on /api/ws). HTTPS is required
+  # for home-screen install and push notifications.
 
 volumes:
   coord-data:
-  caddy-data:
-  caddy-config:
