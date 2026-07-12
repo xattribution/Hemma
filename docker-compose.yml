@@ -7,11 +7,17 @@ services:
       - TZ=${TZ:-America/New_York}
     volumes:
       - coord-data:/data # the whole family database — back this folder up
-    # For a quick first look over plain HTTP (http://<server-ip>:49733),
-    # uncomment the next two lines. Note: installing the app to a phone's
-    # home screen and push notifications require HTTPS via Caddy below.
-    # ports:
-    #   - "49733:49733"
+    # To browse over plain HTTP (http://<server-ip>:49733), create a
+    # docker-compose.override.yml next to this file (kept out of git, so
+    # pulls never conflict):
+    #
+    #   services:
+    #     app:
+    #       ports:
+    #         - "49733:49733"
+    #
+    # Note: installing the app to a phone's home screen and push
+    # notifications require HTTPS via Caddy below.
 
   caddy:
     image: caddy:2

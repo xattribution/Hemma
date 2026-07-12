@@ -91,8 +91,18 @@ Two containers start: the app (API + web, SQLite in the `coord-data` volume)
 and Caddy for HTTPS — which is **required** for the installable app and push
 notifications.
 
-**Just want a first look?** Uncomment the `ports: ["49733:49733"]` lines on the
-`app` service in `docker-compose.yml` and browse `http://<server-ip>:49733` —
+**Just want a first look (or LAN-only HTTP)?** Create a
+`docker-compose.override.yml` next to `docker-compose.yml` (git-ignored, so
+pulls never conflict):
+
+```yaml
+services:
+  app:
+    ports:
+      - "49733:49733"
+```
+
+then `docker compose up -d` and browse `http://<server-ip>:49733` —
 everything works over plain HTTP except home-screen install and push.
 
 **LAN-only (default):** the site is served at `https://coord.local` with a
