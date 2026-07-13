@@ -9,3 +9,7 @@ data/
 dev-dist/
 coverage/
 *.tsbuildinfo
+
+# Tauri shell
+apps/shell/src-tauri/target/
+apps/shell/src-tauri/gen/

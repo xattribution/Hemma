@@ -1,0 +1,21 @@
+[package]
+name = "coord-shell"
+version = "0.1.0"
+description = "Native shell for Coord — opens your family's own Coord server."
+edition = "2021"
+
+[lib]
+name = "coord_shell_lib"
+# staticlib/cdylib are what the Android (and iOS) builds link against.
+crate-type = ["staticlib", "cdylib", "rlib"]
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+tauri = { version = "2", features = [] }
+
+[profile.release]
+strip = true
+lto = true
+codegen-units = 1

@@ -119,6 +119,9 @@ account. Add everyone else in **Settings → Family**.
 - **iPhone/iPad:** Safari → Share → **Add to Home Screen**. Then open the app
   and enable reminders in Settings (iOS only allows push for installed PWAs).
 - **Android:** Chrome prompts to install, or ⋮ → Add to Home screen.
+- **Native apps** (Windows .exe, Linux .deb/.AppImage, macOS .dmg, Android
+  .apk): thin shells that remember your server address and open the same app —
+  built from [apps/shell](docs/apps.md) via `git tag vX.Y.Z && git push --tags`.
 - **Displays:** Settings → Displays → create a display, then open its link
   (or scan its QR code) once on the tablet. It stays signed in, updates
   live, and refreshes itself nightly. Pick per display what it shows —
@@ -136,6 +139,7 @@ TypeScript monorepo (pnpm workspaces):
 | --- | --- |
 | `apps/server` | Fastify 5 + better-sqlite3 (WAL), rrule, web-push; REST + notify-only WebSocket |
 | `apps/web` | React 19 + Vite PWA, Tailwind 4, TanStack Query with WS invalidation, custom-built calendar views |
+| `apps/shell` | Tauri 2 native shell (exe/deb/AppImage/dmg/apk) that connects to your server — see [docs/apps.md](docs/apps.md) |
 | `packages/shared` | Zod schemas = one source of truth for validation + types on both sides |
 | `packages/plugin-sdk` | The stable plugin surface (event bus, plugin context, UI slots) — see its README |
 

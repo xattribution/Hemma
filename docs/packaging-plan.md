@@ -1,6 +1,13 @@
 # Packaging plan — Coord for non-technical families
 
 Goal: grandma's household runs Coord without knowing what Docker is.
+
+> **Shipped so far:** native *client* shells — Windows .exe, Linux
+> .deb/.AppImage, macOS .dmg and an Android .apk (`apps/shell`, built by the
+> `apps` GitHub workflow — see [apps.md](./apps.md)). They connect to an
+> existing family server, which is the "someone techy set it up once" model.
+> The tiers below cover making the *server* itself normie-installable.
+
 Three tiers, built in this order (each reuses the previous):
 
 ## Tier 1 — One-line installer (near-term, days of work)

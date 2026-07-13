@@ -1,0 +1,136 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Coord</title>
+<style>
+  /* Mirrors the app's cozy light theme (apps/web/src/theme/global.css). */
+  :root {
+    --cream: #fdf8f0; --card: #ffffff; --ink: #3a3330; --ink-soft: #7a6f68;
+    --coral: #d97b72; --coral-soft: #f8ebe7; --leaf: #7fb069; --line: #efe5d8;
+  }
+  * { box-sizing: border-box; }
+  html, body { height: 100%; margin: 0; }
+  body {
+    display: flex; align-items: center; justify-content: center;
+    background: var(--cream); color: var(--ink);
+    font-family: "Nunito", ui-rounded, "Arial Rounded MT Bold", system-ui, sans-serif;
+    padding: 1.5rem;
+  }
+  .card {
+    width: 100%; max-width: 26rem; background: var(--card);
+    border-radius: 1.25rem; box-shadow: 0 2px 10px rgb(90 70 50 / 0.08);
+    padding: 2rem; text-align: center;
+  }
+  .logo { font-size: 3.5rem; }
+  h1 { margin: 0.25rem 0 0.5rem; font-size: 1.5rem; font-weight: 800; }
+  p { margin: 0 0 1.25rem; font-weight: 600; color: var(--ink-soft); font-size: 0.95rem; }
+  input {
+    width: 100%; padding: 0.9rem 1rem; font: inherit; font-weight: 700;
+    border: 2px solid var(--line); border-radius: 1rem; background: var(--cream);
+    color: var(--ink); outline: none;
+  }
+  input:focus { border-color: var(--coral); }
+  button {
+    width: 100%; margin-top: 0.75rem; padding: 0.9rem 1rem; font: inherit; font-weight: 800;
+    border: 0; border-radius: 1rem; background: var(--coral); color: #fff; cursor: pointer;
+  }
+  button:active { transform: scale(0.98); }
+  button.ghost { background: none; color: var(--ink-soft); font-weight: 700; margin-top: 0.25rem; }
+  .error { color: var(--coral); font-weight: 700; font-size: 0.9rem; min-height: 1.2rem; margin: 0.5rem 0 0; }
+  .hint { font-size: 0.8rem; color: var(--ink-soft); font-weight: 600; margin-top: 1rem; }
+</style>
+</head>
+<body>
+  <div class="card">
+    <div class="logo">🏡</div>
+    <h1 id="title">Connect to your family</h1>
+    <p id="subtitle">Type the address of your Coord server — ask whoever set it up.</p>
+    <form id="form">
+      <input id="address" placeholder="192.168.1.20:49733 or coord.myfamily.com"
+        autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" />
+      <p class="error" id="error"></p>
+      <button type="submit" id="go">Connect</button>
+      <button type="button" class="ghost" id="cancel" hidden>Use a different server</button>
+    </form>
+    <p class="hint">Plain addresses use <b>http://</b> (fine at home); type <b>https://</b> yourself if your family uses a domain.</p>
+  </div>
+
+<script>
+  const KEY = "coord.server";
+  const $ = (id) => document.getElementById(id);
+  let redirectTimer = null;
+
+  // "192.168.1.20:49733" → "http://192.168.1.20:49733"; strips trailing slash.
+  function normalize(raw) {
+    let url = raw.trim().replace(/\/+$/, "");
+    if (!url) return null;
+    if (!/^https?:\/\//i.test(url)) url = "http://" + url;
+    try { new URL(url); } catch { return null; }
+    return url;
+  }
+
+  // Reachability probe: an opaque (no-cors) response still resolves, so a
+  // resolved fetch means *something* answered at that address.
+  async function reachable(url) {
+    const abort = new AbortController();
+    const timer = setTimeout(() => abort.abort(), 5000);
+    try {
+      await fetch(url + "/api/setup/status", { mode: "no-cors", signal: abort.signal });
+      return true;
+    } catch {
+      return false;
+    } finally {
+      clearTimeout(timer);
+    }
+  }
+
+  async function connect(url, { force = false } = {}) {
+    $("error").textContent = "";
+    $("go").textContent = "Connecting…";
+    if (!force && !(await reachable(url))) {
+      $("go").textContent = "Connect anyway";
+      $("error").textContent = "Couldn't reach that address. Check it (and your Wi-Fi), or connect anyway.";
+      $("form").dataset.force = "1";
+      return;
+    }
+    localStorage.setItem(KEY, url);
+    location.replace(url);
+  }
+
+  $("form").addEventListener("submit", (e) => {
+    e.preventDefault();
+    const url = normalize($("address").value);
+    if (!url) {
+      $("error").textContent = "That doesn't look like an address.";
+      return;
+    }
+    connect(url, { force: $("form").dataset.force === "1" });
+  });
+  $("address").addEventListener("input", () => {
+    delete $("form").dataset.force;
+    $("go").textContent = "Connect";
+    $("error").textContent = "";
+  });
+
+  // Returning user: auto-connect after a short beat, with a way out.
+  const saved = localStorage.getItem(KEY);
+  if (saved) {
+    $("title").textContent = "Welcome back!";
+    $("subtitle").textContent = "Connecting to " + saved.replace(/^https?:\/\//, "") + "…";
+    $("address").value = saved;
+    $("cancel").hidden = false;
+    redirectTimer = setTimeout(() => connect(saved), 1500);
+    $("cancel").addEventListener("click", () => {
+      clearTimeout(redirectTimer);
+      localStorage.removeItem(KEY);
+      $("title").textContent = "Connect to your family";
+      $("subtitle").textContent = "Type the address of your Coord server — ask whoever set it up.";
+      $("cancel").hidden = true;
+      $("address").focus();
+    });
+  }
+</script>
+</body>
+</html>
