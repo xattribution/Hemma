@@ -13,6 +13,7 @@ import { usePush } from "./usePush";
 import { DisplaysSection } from "./DisplaysSection";
 import { FamiliesSection } from "./FamiliesSection";
 import { AiAccessSection } from "./AiAccessSection";
+import { PhotosSection } from "./PhotosSection";
 
 export function SettingsPage({ me }: { me: Extract<Me, { kind: "member" }> }) {
   const isParent = can(me.member.role, "settings.manage");
@@ -24,6 +25,7 @@ export function SettingsPage({ me }: { me: Extract<Me, { kind: "member" }> }) {
       <NotificationsSection />
       {isParent && <DisplaysSection />}
       {isParent && <FamiliesSection />}
+      {isParent && <PhotosSection />}
       {isParent && <AiAccessSection />}
       {isParent && <PluginsSection />}
       <section className="rounded-card bg-card p-4 shadow-card text-sm font-semibold text-ink-soft">

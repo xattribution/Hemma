@@ -69,12 +69,26 @@ export function FamiliesSection() {
         {data.peers.map((peer) => (
           <div key={peer.id} className="rounded-xl border-2 border-line p-3">
             <div className="flex items-center gap-2">
-              <span className="flex-1 font-extrabold">👨‍👩‍👧 {peer.name}</span>
-              <span className="text-[10px] font-bold uppercase text-ink-soft">{peer.status === "active" ? peer.transport : peer.status}</span>
-              <button type="button" title="Disconnect" className="rounded-lg p-1.5 text-ink-soft hover:text-coral"
-                onClick={() => void post(`/api/federation/peers/${peer.id}`, undefined, "DELETE")}>
-                <Trash2 size={15} />
-              </button>
+              <span className="flex-1 font-extrabold">
+                {peer.status === "active" ? "👨‍👩‍👧" : "⏳"} {peer.name}
+              </span>
+              <span className="text-[10px] font-bold uppercase text-ink-soft">
+                {peer.status === "active" ? peer.transport
+                  : peer.name === "(waiting…)" ? "open invite code"
+                  : "waiting for their approval"}
+              </span>
+              {peer.status === "active" ? (
+                <button type="button" title="Disconnect" className="rounded-lg p-1.5 text-ink-soft hover:text-coral"
+                  onClick={() => void post(`/api/federation/peers/${peer.id}`, undefined, "DELETE")}>
+                  <Trash2 size={15} />
+                </button>
+              ) : (
+                <button type="button"
+                  className="rounded-lg px-2 py-1 text-xs font-extrabold text-ink-soft hover:bg-coral-soft hover:text-coral"
+                  onClick={() => void post(`/api/federation/peers/${peer.id}`, undefined, "DELETE")}>
+                  Cancel
+                </button>
+              )}
             </div>
             {peer.status === "active" && (
               <div className="mt-2 flex flex-wrap gap-1.5">

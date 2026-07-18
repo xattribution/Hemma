@@ -133,6 +133,10 @@ account. Add everyone else in **Settings → Family**.
 
 ## Tech
 
+**Full architecture & per-module docs live in [docs/wiki/](docs/wiki/README.md)**
+— written so a fresh engineer (or AI agent) can pick the project up cold.
+The pending-work register is [docs/wiki/gaps.md](docs/wiki/gaps.md).
+
 TypeScript monorepo (pnpm workspaces):
 
 | Package | What |

@@ -112,6 +112,7 @@ function DisplayConfigEditor({ display, onChange }: { display: DisplayInfo; onCh
     ["dashboard", "📋 Daily summary"],
     ["calendar", "📅 Full calendar"],
     ["lists", "🛒 Lists"],
+    ["photos", "🖼️ Photos"],
   ] as const;
 
   return (

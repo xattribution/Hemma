@@ -66,6 +66,8 @@ export const federationModule: CoreModule = {
     const lastSent = new Map<string, string>(); // shareKey -> payload hash
 
     const invalidate = () => broadcast({ type: "invalidate", keys: ["checklists", "dashboard"] });
+    /** Nudge every open Settings screen — a request arrived or a peer changed. */
+    const fedChanged = () => broadcast({ type: "invalidate", keys: ["federation"] });
 
     // ---------- transport ----------
 
@@ -80,8 +82,11 @@ export const federationModule: CoreModule = {
     }
 
     async function sendToPeer(peer: PeerRow, message: FedMessage) {
-      const envelope = { pk: keys.publicKey, body: seal(peer.shared_key, message) };
+      // Placeholder rows (a relay offer nobody has claimed yet) have no real
+      // key — there's nobody to talk to, and seal() would throw.
+      if (!peer.shared_key || peer.shared_key === "-") return;
       try {
+        const envelope = { pk: keys.publicKey, body: seal(peer.shared_key, message) };
         if (peer.transport === "direct" && peer.peer_url) {
           await fetch(`${peer.peer_url.replace(/\/$/, "")}/api/federation/inbox`, {
             method: "POST",
@@ -104,6 +109,7 @@ export const federationModule: CoreModule = {
           recordAudit(db, getHousehold(db)!.id, { memberId: null, name: "Coord" }, "peer", peer.id, "create",
             `Connected with ${message.name} 🎉`);
           invalidate();
+          fedChanged();
           break;
         }
         case "list.snapshot": {
@@ -156,6 +162,7 @@ export const federationModule: CoreModule = {
       db.prepare("DELETE FROM peer_shares WHERE peer_id = ?").run(peerId);
       db.prepare("DELETE FROM peers WHERE id = ?").run(peerId);
       invalidate();
+      fedChanged();
     }
 
     function receiveEnvelope(envelope: { pk?: string; body?: string }) {
@@ -199,6 +206,34 @@ export const federationModule: CoreModule = {
 
     scheduler.every("federation.sync", 15, async () => {
       await syncShares();
+
+      // Expire unclaimed relay-offer placeholders alongside their codes.
+      const stale = db
+        .prepare("SELECT id FROM peers WHERE shared_key = '-' AND created_at < ?")
+        .all(now() - 15 * 60_000) as { id: string }[];
+      for (const row of stale) removePeerLocal(row.id);
+
+      // Direct peers we're still waiting on: ask the other side directly.
+      // Approval is normally pushed to us, but if that one delivery failed
+      // (server asleep, proxy hiccup) this poll rescues the pairing.
+      const waitingDirect = db
+        .prepare("SELECT * FROM peers WHERE status = 'pending' AND transport = 'direct' AND peer_url IS NOT NULL")
+        .all() as PeerRow[];
+      for (const peer of waitingDirect) {
+        try {
+          const res = await fetch(`${peer.peer_url!.replace(/\/$/, "")}/api/federation/pair/poll`, {
+            method: "POST",
+            headers: { "content-type": "application/json" },
+            body: JSON.stringify({ pubkey: keys.publicKey }),
+          });
+          if (!res.ok) continue;
+          const verdict = (await res.json()) as { waiting: boolean; envelope?: { pk: string; body: string } };
+          if (verdict.envelope) receiveEnvelope(verdict.envelope);
+        } catch {
+          // unreachable — try again next tick
+        }
+      }
+
       // Collect relay mail for all peers (and finalize pending relay pairings).
       if (!relayEnabled()) return;
       const peers = db.prepare("SELECT * FROM peers WHERE transport = 'relay' AND inbox IS NOT NULL").all() as PeerRow[];
@@ -220,6 +255,26 @@ export const federationModule: CoreModule = {
       return { ok: true };
     });
 
+    // "Any verdict on my request?" — a pending requester polls this until the
+    // family here approves. The approval is re-issued as a sealed envelope, so
+    // only the true keyholder can read it; strangers just see {waiting:true}.
+    app.post("/api/federation/pair/poll", (req, reply) => {
+      const body = parse(z.object({ pubkey: z.string().min(8).max(200) }), req.body, reply);
+      if (!body) return;
+      const peer = db.prepare("SELECT * FROM peers WHERE pubkey = ?").get(body.pubkey) as PeerRow | undefined;
+      if (!peer || peer.status !== "active") return { waiting: true };
+      return {
+        waiting: false,
+        envelope: {
+          pk: keys.publicKey,
+          body: seal(peer.shared_key, {
+            type: "pair.approve", name: ourName(), pubkey: keys.publicKey,
+            mailbox: peer.transport === "relay" ? (peer.inbox ?? undefined) : undefined,
+          } satisfies FedMessage),
+        },
+      };
+    });
+
     // Direct-mode pairing request (they entered OUR code and OUR url).
     app.post("/api/federation/pair", (req, reply) => {
       if (!allowPairing()) {
@@ -236,6 +291,10 @@ export const federationModule: CoreModule = {
         reply.code(429).send({ error: "Too many tries" });
         return;
       }
+      if (body.pubkey === keys.publicKey) {
+        reply.code(400).send({ error: "That's this family's own code — enter it on the OTHER family's Coord" });
+        return;
+      }
       const offer = offers.get(body.code.toUpperCase());
       if (!offer || offer.expires < now()) {
         recordLoginFailure(key);
@@ -243,11 +302,15 @@ export const federationModule: CoreModule = {
         return;
       }
       offers.delete(body.code.toUpperCase());
+      // Re-request from a family we already know: refresh in place instead of
+      // stacking duplicate rows (duplicate pubkeys would confuse the inbox).
+      const existing = db.prepare("SELECT id FROM peers WHERE pubkey = ?").get(body.pubkey) as { id: string } | undefined;
+      if (existing) removePeerLocal(existing.id);
       db.prepare(
         `INSERT INTO peers (id, name, pubkey, shared_key, transport, peer_url, status, created_at)
          VALUES (?, ?, ?, ?, 'direct', ?, 'request', ?)`,
       ).run(uid(), body.name, body.pubkey, deriveSharedKey(keys.privateKey, body.pubkey), body.replyUrl, now());
-      broadcast({ type: "invalidate", keys: ["members"] }); // nudge settings screens
+      fedChanged();
       // Our pubkey is public — returning it lets the requester derive the
       // pair key right away so our approval message opens cleanly.
       return { ok: true, pending: true, pubkey: keys.publicKey };
@@ -295,12 +358,19 @@ export const federationModule: CoreModule = {
           reply.code(400).send({ error: "Turn on the connection server first" });
           return;
         }
-        await relayPost("/pair/offer", { code, pubkey: keys.publicKey, mailbox });
-        // Watch that mailbox for the incoming request.
+        try {
+          await relayPost("/pair/offer", { code, pubkey: keys.publicKey, mailbox });
+        } catch {
+          reply.code(502).send({ error: `Couldn't reach the connection server at ${relayUrl()} — is it up?` });
+          return;
+        }
+        // Watch that mailbox for the incoming request. pubkey '-' marks this
+        // as a placeholder (nobody has claimed the code yet).
         db.prepare(
           `INSERT INTO peers (id, name, pubkey, shared_key, transport, inbox, status, created_at)
            VALUES (?, '(waiting…)', ?, ?, 'relay', ?, 'pending', ?)`,
         ).run(uid(), `offer:${code}`, "-", mailbox, now());
+        fedChanged();
       }
       return { code, expiresInMinutes: 10 };
     });
@@ -324,15 +394,29 @@ export const federationModule: CoreModule = {
           headers: { "content-type": "application/json" },
           body: JSON.stringify({ code, pubkey: keys.publicKey, name: ourName(), replyUrl: ourUrl }),
         }).catch(() => null);
-        if (!res?.ok) {
+        if (!res) {
           reply.code(400).send({ error: "Couldn't reach that family — check the address and code" });
           return;
         }
+        if (!res.ok) {
+          // Their Coord answered with a reason (expired code, pairing off,
+          // own-code mixup…) — pass it through instead of a generic shrug.
+          const remote = (await res.json().catch(() => null)) as { error?: string } | null;
+          reply.code(400).send({ error: remote?.error ?? "Couldn't reach that family — check the address and code" });
+          return;
+        }
         const { pubkey } = (await res.json()) as { pubkey: string };
+        if (pubkey === keys.publicKey) {
+          reply.code(400).send({ error: "That address is this Coord itself — enter the OTHER family's address" });
+          return;
+        }
+        const dup = db.prepare("SELECT id FROM peers WHERE pubkey = ?").get(pubkey) as { id: string } | undefined;
+        if (dup) removePeerLocal(dup.id); // retrying replaces the stale attempt
         db.prepare(
           `INSERT INTO peers (id, name, pubkey, shared_key, transport, peer_url, status, created_at)
            VALUES (?, '(waiting for approval…)', ?, ?, 'direct', ?, 'pending', ?)`,
         ).run(uid(), pubkey, deriveSharedKey(keys.privateKey, pubkey), body.url, now());
+        fedChanged();
         return { ok: true, waiting: true };
       }
 
@@ -344,12 +428,18 @@ export const federationModule: CoreModule = {
       const claim = (await relayPost("/pair/claim", { code }).catch(() => null)) as
         | { pubkey: string; mailbox: string } | null;
       if (!claim?.pubkey) {
-        reply.code(404).send({ error: "Unknown or expired code" });
+        reply.code(404).send({ error: "Unknown or expired code (or the connection server is unreachable)" });
+        return;
+      }
+      if (claim.pubkey === keys.publicKey) {
+        reply.code(400).send({ error: "That's this family's own code — enter it on the OTHER family's Coord" });
         return;
       }
       const sharedKey = deriveSharedKey(keys.privateKey, claim.pubkey);
       const inbox = mailboxId();
       const peerId = uid();
+      const dup = db.prepare("SELECT id FROM peers WHERE pubkey = ?").get(claim.pubkey) as { id: string } | undefined;
+      if (dup) removePeerLocal(dup.id);
       db.prepare(
         `INSERT INTO peers (id, name, pubkey, shared_key, transport, outbox, inbox, status, created_at)
          VALUES (?, '(waiting for approval…)', ?, ?, 'relay', ?, ?, 'pending', ?)`,
@@ -361,14 +451,18 @@ export const federationModule: CoreModule = {
           body: seal(sharedKey, { type: "pair.request", name: ourName(), pubkey: keys.publicKey, mailbox: inbox }),
         }),
       });
+      fedChanged();
       return { ok: true, waiting: true };
     });
 
     // Relay pairing requests arrive in offer mailboxes — surface them.
     scheduler.every("federation.offers", 10, async () => {
       if (!relayEnabled()) return;
+      // Placeholders are the rows still carrying the dummy shared key. (An
+      // earlier version matched pubkey = '-', which never matched the rows
+      // actually inserted — incoming relay requests were never surfaced.)
       const waiting = db
-        .prepare("SELECT * FROM peers WHERE status = 'pending' AND pubkey = '-' AND transport = 'relay'")
+        .prepare("SELECT * FROM peers WHERE status = 'pending' AND shared_key = '-' AND transport = 'relay'")
         .all() as PeerRow[];
       for (const offer of waiting) {
         try {
@@ -380,7 +474,7 @@ export const federationModule: CoreModule = {
             if (intro.type !== "pair.request") continue;
             db.prepare("UPDATE peers SET name = ?, pubkey = ?, shared_key = ?, outbox = ?, status = 'request' WHERE id = ?")
               .run(intro.name, intro.pubkey, sharedKey, intro.mailbox, offer.id);
-            broadcast({ type: "invalidate", keys: ["members"] });
+            fedChanged();
           }
         } catch { /* retry next tick */ }
       }
@@ -405,6 +499,7 @@ export const federationModule: CoreModule = {
       recordAudit(db, access.householdId, actorOf(access), "peer", id, "create",
         `${access.name} connected with ${peer.name} 🎉`);
       invalidate();
+      fedChanged();
       return { ok: true };
     });
 

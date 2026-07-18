@@ -90,7 +90,7 @@ export const loginInputSchema = z.object({
 
 /** What a shared display (kitchen tablet, living-room screen…) shows. */
 export const displayConfigSchema = z.object({
-  layout: z.enum(["dashboard", "calendar", "lists"]).default("dashboard"),
+  layout: z.enum(["dashboard", "calendar", "lists", "photos"]).default("dashboard"),
   showEvents: z.boolean().default(true),
   showChores: z.boolean().default(true),
   showLists: z.boolean().default(true),

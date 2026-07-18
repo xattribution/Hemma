@@ -8,6 +8,7 @@ export type QueryKeyPattern =
   | "tasks"
   | "checklists"
   | "members"
+  | "federation"
   | "dashboard"
   | "audit"
   | "me"; // display config changes propagate to signed-in kiosks

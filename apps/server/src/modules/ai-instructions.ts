@@ -57,14 +57,21 @@ parent-level permissions.
 ## Chores & to-dos
 
 - GET /api/tasks?date=YYYY-MM-DD → tasks as they stand that day
-  (recurring chores included only on days they repeat; completed flag per day)
-- POST /api/tasks — { "title": "Feed the dog", "icon": "🐶", "kind": "chore",
-  "assigneeId": "<memberId|null>", "repeat": "daily"|"weekdays"|"0,3,5"|null,
-  "dueAt": <ms|null>, "points": 5 }
+  (recurring chores included only on days they repeat; completed flag per
+  day; steps + stepsDone indices per occurrence)
+- POST /api/tasks — { "title": "Clean the living room", "icon": "🧹",
+  "kind": "chore", "assigneeId": "<memberId|null>",
+  "repeat": "daily"|"weekdays"|"0,3,5"|null, "dueAt": <ms|null>,
+  "points": 5, "steps": ["vacuum", "pick up toys"] }
   repeat weekday numbers: 0=Sunday … 6=Saturday. null repeat = one-time.
+  steps are sub-steps INSIDE the one chore (guidance, not assignments).
 - PATCH /api/tasks/:id — partial body of the same fields
 - POST /api/tasks/:id/complete — { "occurrenceDate": "YYYY-MM-DD" } for
-  recurring chores (toggles; required for recurring, null for one-time)
+  recurring chores (toggles; required for recurring, null for one-time).
+  Completing checks all steps; uncompleting clears them.
+- POST /api/tasks/:id/steps/:index/toggle — { "occurrenceDate": ... } check
+  one step; when the last step lands the chore auto-completes, and
+  unchecking a step reopens a completed chore
 - POST /api/tasks/:id/reassign — { "toMemberId": "<memberId|null>" }
   (null = up for grabs). Use this to swap chores between kids.
 - POST /api/tasks/:id/reminder — { "offsetMinutes": 30 } (null clears)
@@ -122,6 +129,8 @@ true mirrors it onto the default grocery list (first pinned shopping list).
 ## Family (parents rarely want you doing this unprompted)
 
 - POST /api/members, PATCH /api/members/:id, DELETE /api/members/:id
+  Kids carry uiLevel "little" (giant simple screens) or "teen" (full app);
+  it's parent-controlled — change it only when explicitly asked.
 
 ## Good behavior
 

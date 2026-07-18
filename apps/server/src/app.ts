@@ -23,6 +23,7 @@ import { auditModule } from "./modules/audit.js";
 import { integrationsModule } from "./modules/integrations.js";
 import { federationModule } from "./modules/federation.js";
 import { dailyQuotePlugin } from "./plugins/daily-quote.js";
+import { immichPlugin } from "./plugins/immich.js";
 
 export interface BuildOptions {
   dbPath: string;
@@ -32,7 +33,9 @@ export interface BuildOptions {
 
 export async function buildApp(options: BuildOptions): Promise<{ app: FastifyInstance; db: Db }> {
   const db = openDb(options.dbPath);
-  const app = Fastify({ logger: options.logger ?? true });
+  // trustProxy: honour X-Forwarded-Proto/Host from the family's reverse proxy
+  // (Nginx Proxy Manager etc.) — federation builds its reply URLs from them.
+  const app = Fastify({ logger: options.logger ?? true, trustProxy: true });
   await app.register(cookie);
   await app.register(websocket);
 
@@ -84,6 +87,7 @@ export async function buildApp(options: BuildOptions): Promise<{ app: FastifyIns
     integrationsModule,
     federationModule,
     dailyQuotePlugin,
+    immichPlugin,
   ];
   const host = await registerModules(
     { app, db, bus, scheduler, broadcast: (msg) => hub.broadcast(msg), log },

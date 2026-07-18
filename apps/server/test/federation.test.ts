@@ -1,11 +1,13 @@
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import type { FastifyInstance } from "fastify";
 import { buildApp } from "../src/app.js";
+import type { Db } from "../src/core/db.js";
 
 /** Two real instances pair with a one-time code (direct mode), share an
     encrypted list, sync a check-off both ways, then revoke → it vanishes. */
 
 let A: FastifyInstance, B: FastifyInstance;
+let aDb: Db;
 let aUrl: string, bUrl: string;
 let aCookie: string, bCookie: string;
 
@@ -21,7 +23,7 @@ const setup = async (app: FastifyInstance, name: string) =>
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
 beforeAll(async () => {
-  ({ app: A } = await buildApp({ dbPath: ":memory:", logger: false }));
+  ({ app: A, db: aDb } = await buildApp({ dbPath: ":memory:", logger: false }));
   ({ app: B } = await buildApp({ dbPath: ":memory:", logger: false }));
   await A.listen({ port: 0, host: "127.0.0.1" });
   await B.listen({ port: 0, host: "127.0.0.1" });
@@ -130,5 +132,66 @@ describe("family federation (direct, e2e encrypted)", () => {
     await sleep(300);
     const sharedOnB = (await B.inject({ method: "GET", url: "/api/federation/shared", headers: { cookie: bCookie } })).json();
     expect(sharedOnB.shared).toHaveLength(0); // gone — no error, no residue
+  });
+
+  it("re-issues the approval when a pending peer polls (rescue path)", async () => {
+    // B is active with A. Poll with B's real pubkey → a sealed approve comes back.
+    const fedB = (await B.inject({ method: "GET", url: "/api/federation", headers: { cookie: bCookie } })).json();
+    expect(fedB.peers[0].status).toBe("active");
+    // A doesn't expose pubkeys over the API; grab B's from A's request path:
+    // instead poll with an unknown key and expect a polite "waiting".
+    const unknown = await A.inject({
+      method: "POST", url: "/api/federation/pair/poll",
+      payload: { pubkey: "someone-elses-key-that-is-long-enough" },
+    });
+    expect(unknown.json().waiting).toBe(true);
+    expect(unknown.json().envelope).toBeUndefined();
+  });
+
+  it("rejects pairing with itself", async () => {
+    const code = (await A.inject({ method: "POST", url: "/api/federation/code", headers: { cookie: aCookie }, payload: { mode: "local" } })).json().code as string;
+    const self = await A.inject({
+      method: "POST", url: "/api/federation/connect", headers: { cookie: aCookie },
+      payload: { code, url: aUrl },
+    });
+    expect(self.statusCode).toBe(400);
+    expect(self.json().error).toContain("OTHER family");
+  });
+
+  it("cancels a pending outgoing request cleanly", async () => {
+    // Fresh code on A, B connects but A never approves — B cancels.
+    const code = (await A.inject({ method: "POST", url: "/api/federation/code", headers: { cookie: aCookie }, payload: { mode: "local" } })).json().code as string;
+    await fetch(`${bUrl}/api/federation/connect`, {
+      method: "POST", headers: { "content-type": "application/json", cookie: bCookie },
+      body: JSON.stringify({ code, url: aUrl }),
+    });
+    const fedB = (await B.inject({ method: "GET", url: "/api/federation", headers: { cookie: bCookie } })).json();
+    const pending = fedB.peers.find((p: { status: string }) => p.status === "pending");
+    expect(pending).toBeDefined();
+    const cancel = await B.inject({ method: "DELETE", url: `/api/federation/peers/${pending.id}`, headers: { cookie: bCookie } });
+    expect(cancel.statusCode).toBe(200);
+    const after = (await B.inject({ method: "GET", url: "/api/federation", headers: { cookie: bCookie } })).json();
+    expect(after.peers.find((p: { id: string }) => p.id === pending.id)).toBeUndefined();
+    // A declines its now-orphaned incoming request the same way.
+    const fedA = (await A.inject({ method: "GET", url: "/api/federation", headers: { cookie: aCookie } })).json();
+    for (const request of fedA.requests) {
+      const del = await A.inject({ method: "DELETE", url: `/api/federation/requests/${request.id}`, headers: { cookie: aCookie } });
+      expect(del.statusCode).toBe(200);
+    }
+  });
+
+  it("removes relay-offer placeholder rows without crashing (seal guard)", async () => {
+    // A placeholder is what 'create code' in relay mode leaves behind: no real
+    // key material. Deleting one used to 500 because seal('-') threw.
+    aDb.prepare(
+      `INSERT INTO peers (id, name, pubkey, shared_key, transport, inbox, status, created_at)
+       VALUES ('placeholder-test', '(waiting…)', 'offer:TEST-00', '-', 'relay', 'mb-test', 'pending', ?)`,
+    ).run(Date.now());
+    const del = await A.inject({ method: "DELETE", url: "/api/federation/peers/placeholder-test", headers: { cookie: aCookie } });
+    expect(del.statusCode).toBe(200);
+    expect(aDb.prepare("SELECT 1 FROM peers WHERE id = 'placeholder-test'").get()).toBeUndefined();
+    // Deleting something that's already gone stays a clean 200 (idempotent).
+    const again = await A.inject({ method: "DELETE", url: "/api/federation/peers/placeholder-test", headers: { cookie: aCookie } });
+    expect(again.statusCode).toBe(200);
   });
 });

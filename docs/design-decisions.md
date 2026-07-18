@@ -3,6 +3,9 @@
 Owner-confirmed decisions that future phases must build against.
 (Decided 2026-07; each maps to a roadmap phase in the README.)
 
+> Architecture and per-module documentation moved to [wiki/](wiki/README.md)
+> — this file stays as the record of *why* those decisions were made.
+
 ## 1. Federation conflict resolution — ordered writes
 
 Shared items (e.g., a cross-household shopping list) resolve conflicts by

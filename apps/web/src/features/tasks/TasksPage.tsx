@@ -18,7 +18,12 @@ export function TasksPage({ me }: { me: Extract<Me, { kind: "member" }> }) {
   const [swapping, setSwapping] = useState<Task | null>(null);
   const isParent = can(me.member.role, "task.manage", me.member.grants);
 
-  const tasks = (data?.tasks ?? []).filter((t) => t.dueToday || !t.completed);
+  // Checking something off must never make it vanish mid-tap: anything done
+  // today stays on the board (struck through) so you see it land — and can
+  // untick a mistake.
+  const doneToday = (t: Task) =>
+    t.completedAt !== null && new Date(t.completedAt).toDateString() === new Date().toDateString();
+  const tasks = (data?.tasks ?? []).filter((t) => t.dueToday || !t.completed || doneToday(t));
   // Your own column comes first (kids see their chores right away).
   const ordered = [...(members ?? [])].sort((a, b) =>
     a.id === me.member.id ? -1 : b.id === me.member.id ? 1 : 0,
@@ -76,13 +81,17 @@ export function TasksPage({ me }: { me: Extract<Me, { kind: "member" }> }) {
               )}
               {columnTasks.map((task) => (
                 <div key={task.id}
-                  className={`flex items-center gap-2 rounded-xl border-2 border-line px-2 py-1.5 transition ${task.completed ? "opacity-50" : ""}`}>
-                  <button type="button" onClick={() => toggle(task)} aria-label="Complete"
-                    className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full border-2 transition active:scale-90 ${
-                      task.completed ? "border-leaf bg-leaf text-white" : "border-line bg-cream hover:border-leaf"
+                  className={`flex items-center gap-2 rounded-xl border-2 border-line px-2 py-2 transition ${task.completed ? "opacity-50" : ""}`}>
+                  {/* An unmistakable checkbox — same language as lists & the kid app. */}
+                  <button type="button" onClick={() => toggle(task)}
+                    aria-label={task.completed ? "Mark not done" : "Mark done"}
+                    title={task.completed ? "Mark not done" : "Mark done"}
+                    className={`group flex h-9 w-9 shrink-0 items-center justify-center rounded-full border-[2.5px] transition active:scale-90 ${
+                      task.completed ? "border-leaf bg-leaf text-white" : "border-ink-soft/40 bg-cream hover:border-leaf"
                     }`}>
-                    {task.completed ? <Check size={18} /> : <span className="text-sm">{task.icon}</span>}
+                    <Check size={20} className={task.completed ? "" : "opacity-0 text-leaf transition group-hover:opacity-60"} />
                   </button>
+                  <span className="shrink-0 text-xl" aria-hidden>{task.icon}</span>
                   <div className="min-w-0 flex-1">
                     <p className={`truncate text-sm font-bold ${task.completed ? "line-through" : ""}`}>{task.title}</p>
                     {task.steps.length > 0 && (
@@ -92,9 +101,9 @@ export function TasksPage({ me }: { me: Extract<Me, { kind: "member" }> }) {
                           return (
                             <button key={i} type="button"
                               onClick={() => mutations.toggleStep.mutate({ id: task.id, stepIndex: i, occurrenceDate: task.occurrenceDate })}
-                              className="flex w-full items-center gap-1.5 rounded-md px-1 py-0.5 text-left text-[11px] font-semibold hover:bg-cream">
-                              <span className={`flex h-3.5 w-3.5 items-center justify-center rounded-full border ${
-                                stepDone ? "border-leaf bg-leaf text-white" : "border-line bg-cream"
+                              className="flex w-full items-center gap-2 rounded-lg px-1.5 py-1 text-left text-xs font-semibold hover:bg-cream">
+                              <span className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-full border-2 text-[10px] ${
+                                stepDone ? "border-leaf bg-leaf text-white" : "border-ink-soft/40 bg-cream"
                               }`}>{stepDone ? "✓" : ""}</span>
                               <span className={stepDone ? "text-ink-soft line-through" : "text-ink-soft"}>{step}</span>
                             </button>
