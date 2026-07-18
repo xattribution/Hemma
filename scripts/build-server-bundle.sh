@@ -93,8 +93,10 @@ case "$PLATFORM" in
   *) echo "unknown platform: $PLATFORM"; exit 1 ;;
 esac
 
-# ---------- 4. web app + launchers + plain-language README ----------
+# ---------- 4. web app + version stamp + launchers + README ----------
 cp -r apps/web/dist "$STAGE/web"
+# the server reads its displayed version from the package.json beside it
+printf '{ "name": "hemma-server", "private": true, "version": "%s" }\n' "$VERSION" > "$STAGE/package.json"
 
 if [ "$PLATFORM" = "win-x64" ]; then
   # CRLF so Notepad users can read them

@@ -1,6 +1,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import Fastify, { type FastifyInstance } from "fastify";
+import { config } from "./config.js";
 import cookie from "@fastify/cookie";
 import websocket from "@fastify/websocket";
 import fastifyStatic from "@fastify/static";
@@ -62,7 +63,7 @@ export async function buildApp(options: BuildOptions): Promise<{ app: FastifyIns
     reply.code(status).send({ error: status >= 500 ? "Something went wrong" : (error.message ?? "Error") });
   });
 
-  app.get("/api/health", () => ({ ok: true }));
+  app.get("/api/health", () => ({ ok: true, version: config.version }));
 
   app.get("/api/ws", { websocket: true }, (socket, req) => {
     if (!lookupSession(db, req.cookies[SESSION_COOKIE])) {

@@ -1,6 +1,6 @@
 import { useState } from "react";
-import { Bell, DatabaseBackup, Home, Pencil, Plus, Puzzle, Trash2, Users } from "lucide-react";
-import { useQueryClient } from "@tanstack/react-query";
+import { Bell, ChevronDown, ChevronRight, DatabaseBackup, Home, Pencil, Plus, Puzzle, Trash2, Users } from "lucide-react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import type { Grant, Me, Member, Role } from "@coord/shared";
 import { AVATARS, GRANTS, MEMBER_COLORS, PATTERN_ANIMALS, can } from "@coord/shared";
 import { api } from "../../api/client";
@@ -19,24 +19,81 @@ import { AppsSection } from "./AppsSection";
 
 export function SettingsPage({ me }: { me: Extract<Me, { kind: "member" }> }) {
   const isParent = can(me.member.role, "settings.manage");
+  if (!isParent) {
+    return (
+      <div className="mx-auto max-w-2xl space-y-4">
+        <h2 className="text-xl font-extrabold">Settings</h2>
+        <FamilySection isParent={false} />
+        <NotificationsSection />
+        <VersionFooter />
+      </div>
+    );
+  }
   return (
-    <div className="mx-auto max-w-2xl space-y-4">
+    <div className="mx-auto max-w-2xl space-y-6">
       <h2 className="text-xl font-extrabold">Settings</h2>
-      {isParent && <HouseholdSection currentName={me.household.name} />}
-      <FamilySection isParent={isParent} />
-      <NotificationsSection />
-      {isParent && <DisplaysSection />}
-      {isParent && <SubscriptionsSection />}
-      {isParent && <AppsSection />}
-      {isParent && <FamiliesSection />}
-      {isParent && <PhotosSection />}
-      {isParent && <AiAccessSection />}
-      {isParent && <PluginsSection />}
-      {isParent && <BackupSection />}
-      <section className="rounded-card bg-card p-4 shadow-card text-sm font-semibold text-ink-soft">
-        Hemma v0.1 — your family's data lives on your own server. 💛
-      </section>
+      <SettingsGroup id="family" title="Family & home">
+        <HouseholdSection currentName={me.household.name} />
+        <FamilySection isParent />
+        <NotificationsSection />
+      </SettingsGroup>
+      <SettingsGroup id="devices" title="Screens & apps">
+        <DisplaysSection />
+        <AppsSection />
+      </SettingsGroup>
+      <SettingsGroup id="content" title="Calendars & photos">
+        <SubscriptionsSection />
+        <PhotosSection />
+      </SettingsGroup>
+      <SettingsGroup id="connections" title="Other families">
+        <FamiliesSection />
+      </SettingsGroup>
+      <SettingsGroup id="advanced" title="System & backup" defaultOpen={false}>
+        <BackupSection />
+        <AiAccessSection />
+        <PluginsSection />
+      </SettingsGroup>
+      <VersionFooter />
     </div>
+  );
+}
+
+/** A labeled, collapsible band of settings cards; open state is remembered
+    per device so the page stays as tidy as each family leaves it. */
+function SettingsGroup({ id, title, children, defaultOpen = true }: {
+  id: string; title: string; children: React.ReactNode; defaultOpen?: boolean;
+}) {
+  const [open, setOpen] = useState<boolean>(() => {
+    const saved = localStorage.getItem(`coord.settings.group.${id}`);
+    return saved === null ? defaultOpen : saved === "1";
+  });
+  const toggle = () =>
+    setOpen((current) => {
+      localStorage.setItem(`coord.settings.group.${id}`, current ? "0" : "1");
+      return !current;
+    });
+  return (
+    <div>
+      <button type="button" onClick={toggle} aria-expanded={open}
+        className="flex w-full items-center justify-between border-b border-line pb-1.5 text-left">
+        <span className="text-xs font-extrabold uppercase tracking-widest text-ink-soft">{title}</span>
+        {open ? <ChevronDown size={16} className="text-ink-soft" /> : <ChevronRight size={16} className="text-ink-soft" />}
+      </button>
+      {open && <div className="mt-3 space-y-4">{children}</div>}
+    </div>
+  );
+}
+
+function VersionFooter() {
+  const { data } = useQuery({
+    queryKey: ["health"],
+    queryFn: () => api<{ ok: boolean; version: string }>("/api/health"),
+    staleTime: Infinity,
+  });
+  return (
+    <p className="pb-2 text-center text-sm font-semibold text-ink-soft">
+      Hemma {data?.version && data.version !== "dev" ? `v${data.version}` : "(dev)"} — your family's data lives on your own server. 💛
+    </p>
   );
 }
 
