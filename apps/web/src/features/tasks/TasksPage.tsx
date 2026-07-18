@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { ArrowLeftRight, Check, Pencil, Plus, Star, Trash2 } from "lucide-react";
+import { ArrowLeftRight, Check, Eye, EyeOff, Pencil, Plus, Star, Trash2 } from "lucide-react";
 import type { Me, Member, Task, TaskInput, TaskStep } from "@coord/shared";
 import { can } from "@coord/shared";
 import { useMembers, useTaskMutations, useTasks } from "../../api/queries";
@@ -23,7 +23,11 @@ export function TasksPage({ me }: { me: Extract<Me, { kind: "member" }> }) {
   // untick a mistake.
   const doneToday = (t: Task) =>
     t.completedAt !== null && new Date(t.completedAt).toDateString() === new Date().toDateString();
-  const tasks = (data?.tasks ?? []).filter((t) => t.dueToday || !t.completed || doneToday(t));
+  const [showPrivate, setShowPrivate] = useState(() => localStorage.getItem("coord.cal.showPrivate") === "1");
+  const tasks = (data?.tasks ?? [])
+    .filter((t) => t.dueToday || !t.completed || doneToday(t))
+    // Others' private to-dos reach parents only; keep them behind the eye.
+    .filter((t) => !(t.visibility === "private" && t.createdBy !== me.member.id && !showPrivate));
   // Your own column comes first (kids see their chores right away).
   const ordered = [...(members ?? [])].sort((a, b) =>
     a.id === me.member.id ? -1 : b.id === me.member.id ? 1 : 0,
@@ -44,11 +48,21 @@ export function TasksPage({ me }: { me: Extract<Me, { kind: "member" }> }) {
     <div className="space-y-3">
       <div className="flex items-center justify-between">
         <h2 className="text-xl font-extrabold">Chores</h2>
-        {isParent && (
-          <button type="button" className={`${primaryBtn} flex items-center gap-1`} onClick={() => setEditing("new")}>
-            <Plus size={18} /> Chore
-          </button>
-        )}
+        <div className="flex items-center gap-2">
+          {isParent && (
+            <button type="button"
+              title={showPrivate ? "Hide other people's private items" : "Show other people's private items"}
+              onClick={() => setShowPrivate((current) => { localStorage.setItem("coord.cal.showPrivate", current ? "0" : "1"); return !current; })}
+              className="rounded-lg p-1.5 text-ink-soft transition hover:text-ink">
+              {showPrivate ? <Eye size={16} /> : <EyeOff size={16} />}
+            </button>
+          )}
+          {isParent && (
+            <button type="button" className={`${primaryBtn} flex items-center gap-1`} onClick={() => setEditing("new")}>
+              <Plus size={18} /> Chore
+            </button>
+          )}
+        </div>
       </div>
 
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
@@ -201,6 +215,7 @@ function TaskModal({ task, members, onClose }: { task: Task | null; members: Mem
   const [repeat, setRepeat] = useState<Repeat>((task?.repeat as Repeat) ?? "daily");
   const [points, setPoints] = useState(task?.points?.toString() ?? "");
   const [steps, setSteps] = useState<TaskStep[]>(task?.steps ?? []);
+  const [visibility, setVisibility] = useState<"family" | "private">(task?.visibility ?? "family");
   const busy = mutations.create.isPending || mutations.update.isPending;
 
   const setStep = (index: number, patch: Partial<TaskStep>) =>
@@ -214,6 +229,7 @@ function TaskModal({ task, members, onClose }: { task: Task | null; members: Mem
       repeat: repeat === "" ? null : repeat,
       points: points ? Number(points) : null,
       steps: steps.filter((s) => s.text.trim()).map((s) => ({ ...s, text: s.text.trim() })),
+      visibility,
     };
     const options = { onSuccess: onClose, onError: (err: Error) => showToast(err.message, "error") };
     if (task) mutations.update.mutate({ id: task.id, ...input }, options);
@@ -247,6 +263,20 @@ function TaskModal({ task, members, onClose }: { task: Task | null; members: Mem
               <MemberChip key={member.id} member={member} active={assigneeId === member.id}
                 onClick={() => setAssigneeId(member.id)} />
             ))}
+          </div>
+        </div>
+        <div>
+          <label className={labelCls}>Who sees it?</label>
+          <div className="flex gap-2">
+            <button type="button" onClick={() => setVisibility("family")}
+              className={`flex-1 rounded-lg border px-3 py-1.5 text-sm font-bold ${visibility === "family" ? "border-sky bg-sky text-white" : "border-line"}`}>
+              👪 Whole family
+            </button>
+            <button type="button" onClick={() => setVisibility("private")}
+              title="Only you — e.g. a bank-payment reminder the kids don't need"
+              className={`flex-1 rounded-lg border px-3 py-1.5 text-sm font-bold ${visibility === "private" ? "border-sky bg-sky text-white" : "border-line"}`}>
+              🔒 Just me
+            </button>
           </div>
         </div>
         <div className="grid grid-cols-2 gap-3">

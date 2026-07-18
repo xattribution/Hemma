@@ -55,6 +55,7 @@ tokens + an MCP server.
 - [frontend.md](frontend.md) — app structure, themes, kid app, plugin slots
 - [apps-shell.md](apps-shell.md) — native apps + release CI, Docker deploy
 - [gaps.md](gaps.md) — **the honest register of pending / incomplete work**
+- `../integrations-plan.md` — external calendar/photo connector difficulty map
 
 ## Architecture in five paragraphs
 

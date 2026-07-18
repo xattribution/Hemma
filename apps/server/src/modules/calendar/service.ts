@@ -12,6 +12,21 @@ import { expandOccurrences, withUntilBefore, type ExceptionSpec } from "./recurr
  * external calendar sync) all go through these functions.
  */
 
+/** Whoever is asking; undefined = trusted internal call (seed, tests). */
+export interface Viewer {
+  kind: "member" | "device" | "agent";
+  memberId: string | null;
+  role: string | null;
+}
+
+/** Private items: creator + parents + agents. Displays and other kids: no. */
+export function canView(viewer: Viewer | undefined, visibility: string, createdBy: string | null): boolean {
+  if (visibility !== "private" || !viewer) return true;
+  if (viewer.kind === "agent") return true;
+  if (viewer.kind === "device") return false;
+  return viewer.role === "parent" || (viewer.memberId !== null && viewer.memberId === createdBy);
+}
+
 interface EventRow {
   id: string;
   household_id: string;
@@ -25,6 +40,7 @@ interface EventRow {
   timezone: string;
   rrule: string | null;
   created_by: string | null;
+  visibility: string;
 }
 
 function loadExceptions(db: Db, eventId: string): ExceptionSpec[] {
@@ -58,18 +74,20 @@ function toApiEvent(db: Db, row: EventRow): CoordEvent {
     rrule: row.rrule,
     assigneeIds,
     reminderMinutes: reminder?.offset_minutes ?? null,
+    visibility: (row.visibility ?? "family") as CoordEvent["visibility"],
     createdBy: row.created_by,
   };
 }
 
-export function listInstances(db: Db, householdId: string, windowStart: number, windowEnd: number): EventInstance[] {
-  const rows = db
+export function listInstances(db: Db, householdId: string, windowStart: number, windowEnd: number, viewer?: Viewer): EventInstance[] {
+  const rows = (db
     .prepare(
       `SELECT * FROM events
        WHERE household_id = ? AND deleted_at IS NULL
          AND ((rrule IS NULL AND start_at < ? AND end_at > ?) OR (rrule IS NOT NULL AND start_at < ?))`,
     )
-    .all(householdId, windowEnd, windowStart, windowEnd) as EventRow[];
+    .all(householdId, windowEnd, windowStart, windowEnd) as EventRow[])
+    .filter((row) => canView(viewer, row.visibility, row.created_by));
 
   const instances: EventInstance[] = [];
   for (const row of rows) {
@@ -120,14 +138,17 @@ function setReminder(db: Db, householdId: string, eventId: string, minutes: numb
   }
 }
 
-export function createEvent(db: Db, bus: EventBus, householdId: string, actor: ActorRef, input: EventInput): string {
+export function createEvent(
+  db: Db, bus: EventBus, householdId: string, actor: ActorRef,
+  input: Omit<EventInput, "visibility"> & { visibility?: EventInput["visibility"] },
+): string {
   const id = uid();
   const { startAt, endAt } = normalizeTimes(input);
   db.prepare(
-    `INSERT INTO events (id, household_id, title, description, location, category, start_at, end_at, all_day, timezone, rrule, created_by, created_at, updated_at)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    `INSERT INTO events (id, household_id, title, description, location, category, visibility, start_at, end_at, all_day, timezone, rrule, created_by, created_at, updated_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
   ).run(
-    id, householdId, input.title, input.description, input.location, input.category,
+    id, householdId, input.title, input.description, input.location, input.category, input.visibility ?? "family",
     startAt, endAt, input.allDay ? 1 : 0, input.timezone, input.rrule, actor.memberId, now(), now(),
   );
   setAssignees(db, id, input.assigneeIds);
@@ -195,13 +216,14 @@ export function updateEvent(db: Db, bus: EventBus, householdId: string, actor: A
       endAt = startAt + duration;
     }
     db.prepare(
-      `UPDATE events SET title = ?, description = ?, location = ?, category = ?, start_at = ?, end_at = ?,
+      `UPDATE events SET title = ?, description = ?, location = ?, category = ?, visibility = ?, start_at = ?, end_at = ?,
        all_day = ?, timezone = ?, rrule = ?, updated_at = ? WHERE id = ?`,
     ).run(
       patch.title ?? row.title,
       patch.description ?? row.description,
       patch.location ?? row.location,
       patch.category ?? row.category,
+      patch.visibility ?? row.visibility ?? "family",
       startAt,
       endAt,
       (patch.allDay ?? !!row.all_day) ? 1 : 0,

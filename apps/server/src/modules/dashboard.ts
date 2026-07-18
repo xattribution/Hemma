@@ -14,7 +14,8 @@ export const dashboardModule: CoreModule = {
   description: "The always-on family view: today at a glance.",
   register({ app, db }) {
     app.get("/api/dashboard/today", (req, reply) => {
-      if (!requireAccess(db, req, reply)) return;
+      const access = requireAccess(db, req, reply);
+      if (!access) return;
       const household = getHousehold(db)!;
       const tz = household.timezone;
       const nowMs = now();
@@ -25,7 +26,7 @@ export const dashboardModule: CoreModule = {
       const dayAfterStart = utcOfWall({ ...today, day: today.day + 2, hour: 0, minute: 0, second: 0 }, tz);
 
       const isoDate = isoDateOf(nowMs, tz);
-      const tasks = listTasksFor(db, household.id, isoDate, tz);
+      const tasks = listTasksFor(db, household.id, isoDate, tz, access);
       const members = (
         db.prepare("SELECT * FROM members WHERE deleted_at IS NULL ORDER BY sort_order, created_at").all() as MemberRow[]
       ).map(toMember);
@@ -33,8 +34,8 @@ export const dashboardModule: CoreModule = {
       const payload: DashboardToday = {
         date: isoDate,
         household: { name: household.name, timezone: tz },
-        events: listInstances(db, household.id, dayStart, tomorrowStart),
-        tomorrowEvents: listInstances(db, household.id, tomorrowStart, dayAfterStart),
+        events: listInstances(db, household.id, dayStart, tomorrowStart, access),
+        tomorrowEvents: listInstances(db, household.id, tomorrowStart, dayAfterStart, access),
         choresByMember: members.map((member) => ({
           member,
           tasks: tasks.filter((t) => t.assigneeId === member.id && t.dueToday),

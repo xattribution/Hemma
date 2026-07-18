@@ -28,6 +28,16 @@ Edit semantics (`PATCH /api/events/:id` with `scope`):
 `GET /api/events?start&end` returns **expanded instances**
 (`occurrenceStart/occurrenceEnd`, `isException`) — clients never expand.
 
+## Visibility (v10)
+
+Events carry `visibility: family | private`. Enforcement is server-side in
+`canView` (calendar/service.ts): private = creator + parents + agents;
+kids and displays never receive it (events list, dashboard, search).
+Reminders for private items push to the creator only. UI: "Who sees it?"
+in the event modal; parents get an eye toggle to reveal others' private
+items; per-user member filter chips (localStorage) declutter the calendar
+without hiding anything from the server's perspective.
+
 ## UI notes
 
 - Month cells stretch to fill viewport height

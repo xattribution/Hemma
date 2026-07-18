@@ -132,11 +132,21 @@ export type Me =
 
 // ---------- Events ----------
 
+/**
+ * Who an item is for. 'family' = the whole household; 'private' = just its
+ * creator (parents and connected AIs can always read everything — private
+ * items of others are hidden by default in their UI, never from them).
+ * Displays and kids never receive other people's private items at all.
+ */
+export const visibilitySchema = z.enum(["family", "private"]);
+export type Visibility = z.infer<typeof visibilitySchema>;
+
 export const eventInputSchema = z.object({
   title: z.string().trim().min(1).max(120),
   description: z.string().max(2000).default(""),
   location: z.string().max(200).default(""),
   category: eventCategorySchema.default("family"),
+  visibility: visibilitySchema.default("family"),
   startAt: z.number().int(), // UTC ms
   endAt: z.number().int(),
   allDay: z.boolean().default(false),
@@ -199,6 +209,7 @@ export const taskInputSchema = z.object({
   points: z.number().int().min(0).max(1000).nullable().default(null),
   /** Sub-steps shown inside the one chore ("vacuum", "fluff pillows", …). */
   steps: z.array(taskStepInputSchema).max(20).default([]),
+  visibility: visibilitySchema.default("family"),
 });
 export type TaskInput = z.infer<typeof taskInputSchema>;
 

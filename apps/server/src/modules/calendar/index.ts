@@ -29,11 +29,12 @@ export const calendarModule: CoreModule = {
   description: "Family events with recurrence, exceptions and reminders.",
   register({ app, db, bus }) {
     app.get("/api/events", (req, reply) => {
-      if (!requireAccess(db, req, reply)) return;
+      const access = requireAccess(db, req, reply);
+      if (!access) return;
       const range = parse(rangeSchema, req.query, reply);
       if (!range) return;
       const household = getHousehold(db)!;
-      return { instances: listInstances(db, household.id, range.start, range.end) };
+      return { instances: listInstances(db, household.id, range.start, range.end, access) };
     });
 
     app.post("/api/events", (req, reply) => {

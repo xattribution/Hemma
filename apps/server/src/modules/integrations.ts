@@ -60,16 +60,21 @@ export const integrationsModule: CoreModule = {
       if (!query) return;
       const like = `%${query.q}%`;
       const hh = access.householdId;
+      // Private items surface only for their creator, parents and agents.
+      const privileged = access.kind === "agent" || access.role === "parent" ? 1 : 0;
+      const seePrivate = "(visibility != 'private' OR ? = 1 OR created_by = ?)";
+      const me = access.memberId ?? "";
       return {
         events: db.prepare(
           `SELECT id, title, location, category, start_at AS startAt, end_at AS endAt, rrule
            FROM events WHERE household_id = ? AND deleted_at IS NULL AND (title LIKE ? OR description LIKE ? OR location LIKE ?)
+           AND ${seePrivate}
            ORDER BY start_at DESC LIMIT 25`,
-        ).all(hh, like, like, like),
+        ).all(hh, like, like, like, privileged, me),
         tasks: db.prepare(
           `SELECT id, title, kind, assignee_id AS assigneeId, repeat, due_at AS dueAt
-           FROM tasks WHERE household_id = ? AND deleted_at IS NULL AND title LIKE ? LIMIT 25`,
-        ).all(hh, like),
+           FROM tasks WHERE household_id = ? AND deleted_at IS NULL AND title LIKE ? AND ${seePrivate} LIMIT 25`,
+        ).all(hh, like, privileged, me),
         checklistItems: db.prepare(
           `SELECT i.id, i.text, i.quantity, i.store, i.checked, c.id AS checklistId, c.title AS checklistTitle
            FROM checklist_items i JOIN checklists c ON c.id = i.checklist_id

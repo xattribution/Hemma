@@ -53,6 +53,11 @@ parent-level permissions.
     "rrule": "FREQ=WEEKLY", "assigneeIds": ["<memberId>"], "reminderMinutes": 60,
     "location": "Riverside Park", "description": "" }
   Categories: family, school, sports, work, appointment, birthday, holiday, other.
+  visibility: "family" (default, everyone) or "private" (creator only —
+  kids and displays never receive it; reminders nudge only the creator).
+  You (an agent) see everything, so CHECK visibility before repeating a
+  private item to the wrong person: a private event belongs to createdBy
+  only. Same field exists on tasks.
 - PATCH /api/events/:id — body { "scope": "single"|"future"|"all",
   "occurrenceStart": <ms of the occurrence being edited>, "patch": { ...fields } }
 - DELETE /api/events/:id?scope=single&occurrenceStart=<ms>

@@ -1,8 +1,9 @@
 import { useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router";
-import { ChevronLeft, ChevronRight, Plus } from "lucide-react";
+import { ChevronLeft, ChevronRight, Eye, EyeOff, Plus } from "lucide-react";
 import type { EventInstance } from "@coord/shared";
-import { useEventsRange, useMembers } from "../../api/queries";
+import { useEventsRange, useMe, useMembers } from "../../api/queries";
+import { Avatar } from "../../components/Avatar";
 import { PluginSlot } from "../../plugins/registry";
 import { FullscreenButton } from "../../components/FullscreenButton";
 import { primaryBtn } from "../../components/Modal";
@@ -30,6 +31,37 @@ export function CalendarPage() {
   const range = useMemo(() => viewRange(view, anchor), [view, anchor.getTime()]);
   const { data: instances } = useEventsRange(range.start, range.end);
   const { data: members } = useMembers();
+  const me = useMe();
+  const myId = me.data?.kind === "member" ? me.data.member.id : null;
+  const isParent = me.data?.kind === "member" && me.data.member.role === "parent";
+
+  // Per-user view filters (this device): hide members' events you don't
+  // need to see; parents can also reveal others' private items.
+  const [hidden, setHidden] = useState<string[]>(() => {
+    try { return JSON.parse(localStorage.getItem("coord.cal.hiddenMembers") ?? "[]") as string[]; } catch { return []; }
+  });
+  const [showPrivate, setShowPrivate] = useState(() => localStorage.getItem("coord.cal.showPrivate") === "1");
+  const toggleMember = (id: string) =>
+    setHidden((current) => {
+      const next = current.includes(id) ? current.filter((m) => m !== id) : [...current, id];
+      localStorage.setItem("coord.cal.hiddenMembers", JSON.stringify(next));
+      return next;
+    });
+  const togglePrivate = () =>
+    setShowPrivate((current) => {
+      localStorage.setItem("coord.cal.showPrivate", current ? "0" : "1");
+      return !current;
+    });
+
+  const visibleInstances = (instances ?? []).filter((instance) => {
+    // Others' private items reach parents only; keep them tucked away
+    // until the eye is opened. Your own always show.
+    if (instance.visibility === "private" && instance.createdBy !== myId && !showPrivate) return false;
+    // An event assigned to specific people hides when ALL of them are
+    // filtered out (family-wide, unassigned events always show).
+    if (instance.assigneeIds.length && instance.assigneeIds.every((id) => hidden.includes(id))) return false;
+    return true;
+  });
 
   const go = (v: CalView, d: Date) => navigate(`/calendar/${v}/${toParam(d)}`);
 
@@ -73,10 +105,29 @@ export function CalendarPage() {
         </div>
       </div>
 
+      {(members ?? []).length > 1 && (
+        <div className="flex flex-wrap items-center gap-1.5">
+          {(members ?? []).map((member) => (
+            <button key={member.id} type="button" onClick={() => toggleMember(member.id)}
+              title={hidden.includes(member.id) ? `Show ${member.name}'s events` : `Hide ${member.name}'s events`}
+              className={`transition ${hidden.includes(member.id) ? "opacity-30 grayscale" : ""}`}>
+              <Avatar member={member} size="sm" />
+            </button>
+          ))}
+          {isParent && (
+            <button type="button" onClick={togglePrivate}
+              title={showPrivate ? "Hide other people's private items" : "Show other people's private items"}
+              className="ml-2 rounded-lg p-1.5 text-ink-soft transition hover:text-ink">
+              {showPrivate ? <Eye size={16} /> : <EyeOff size={16} />}
+            </button>
+          )}
+        </div>
+      )}
+
       {view === "month" ? (
         <MonthView
           anchor={anchor}
-          instances={instances ?? []}
+          instances={visibleInstances}
           members={members ?? []}
           onDayClick={(day) => setModal({ kind: "day", day })}
           onEventClick={(instance) => setModal({ kind: "edit", instance })}
@@ -84,7 +135,7 @@ export function CalendarPage() {
       ) : (
         <WeekView
           days={view === "week" ? weekDays(anchor) : [anchor]}
-          instances={instances ?? []}
+          instances={visibleInstances}
           onSlotClick={(day, hour) => {
             const start = new Date(day);
             start.setHours(hour, 0, 0, 0);

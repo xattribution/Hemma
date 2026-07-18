@@ -113,7 +113,7 @@ export const remindersModule: CoreModule = {
           const event = db
             .prepare("SELECT * FROM events WHERE id = ? AND deleted_at IS NULL")
             .get(reminder.entity_id) as
-            | { title: string; location: string; start_at: number; end_at: number; timezone: string; rrule: string | null }
+            | { title: string; location: string; start_at: number; end_at: number; timezone: string; rrule: string | null; visibility: string; created_by: string | null }
             | undefined;
           if (!event) continue;
           // Occurrences whose (start - offset) falls inside (now - grace, now].
@@ -132,14 +132,17 @@ export const remindersModule: CoreModule = {
                 reminder, occ.occurrenceStart,
                 `⏰ ${event.title}`,
                 `${timeFmt.format(occ.occurrenceStart)}${event.location ? ` · ${event.location}` : ""}`,
-                reminder.target === "assignees" && assignees.length ? assignees : null,
+                // Private events nudge only their creator — never the house.
+                event.visibility === "private"
+                  ? (event.created_by ? [event.created_by] : [])
+                  : reminder.target === "assignees" && assignees.length ? assignees : null,
               );
             }
           }
         } else {
           const task = db
-            .prepare("SELECT title, assignee_id, due_at FROM tasks WHERE id = ? AND deleted_at IS NULL")
-            .get(reminder.entity_id) as { title: string; assignee_id: string | null; due_at: number | null } | undefined;
+            .prepare("SELECT title, assignee_id, due_at, visibility, created_by FROM tasks WHERE id = ? AND deleted_at IS NULL")
+            .get(reminder.entity_id) as { title: string; assignee_id: string | null; due_at: number | null; visibility: string; created_by: string | null } | undefined;
           if (!task?.due_at) continue;
           const fireAt = task.due_at - offsetMs;
           if (fireAt <= nowMs && fireAt > nowMs - GRACE_MS) {
@@ -147,7 +150,9 @@ export const remindersModule: CoreModule = {
               reminder, task.due_at,
               `✅ ${task.title}`,
               `Due at ${timeFmt.format(task.due_at)}`,
-              task.assignee_id ? [task.assignee_id] : null,
+              task.visibility === "private"
+                ? (task.created_by ? [task.created_by] : [])
+                : task.assignee_id ? [task.assignee_id] : null,
             );
           }
         }

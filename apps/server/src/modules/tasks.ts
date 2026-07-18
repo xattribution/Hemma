@@ -3,6 +3,7 @@ import { taskInputSchema, type Task, type TaskStep } from "@coord/shared";
 import type { EventBus } from "@coord/plugin-sdk";
 import type { CoreModule } from "../core/plugin-host.js";
 import { requireAccess, requireActor } from "../core/auth.js";
+import { canView, type Viewer } from "./calendar/service.js";
 import { actorOf } from "../core/actor.js";
 import { parse } from "../core/http.js";
 import type { Db } from "../core/db.js";
@@ -24,6 +25,7 @@ interface TaskRow {
   points: number | null;
   steps_json: string | null;
   created_by: string | null;
+  visibility: string;
 }
 
 /** Steps stored as bare strings (pre-v9) upgrade to objects on read. */
@@ -82,7 +84,7 @@ export function repeatsOn(repeat: string, weekday: number): boolean {
 }
 
 /** List tasks as they stand for a given household-local date. */
-export function listTasksFor(db: Db, householdId: string, isoDate: string, tz: string): Task[] {
+export function listTasksFor(db: Db, householdId: string, isoDate: string, tz: string, viewer?: Viewer): Task[] {
   const [y, m, d] = isoDate.split("-").map(Number);
   const noonUtc = utcOfWall({ year: y!, month: m! - 1, day: d!, hour: 12, minute: 0, second: 0 }, tz);
   const weekday = new Date(noonUtc).getUTCDay(); // noon avoids DST edge ambiguity
@@ -92,6 +94,7 @@ export function listTasksFor(db: Db, householdId: string, isoDate: string, tz: s
 
   const tasks: Task[] = [];
   for (const row of rows) {
+    if (!canView(viewer, row.visibility ?? "family", row.created_by)) continue;
     const recurring = row.repeat !== null;
     if (recurring && !repeatsOn(row.repeat!, weekday)) continue;
     const occurrenceKey = recurring ? isoDate : "";
@@ -112,6 +115,7 @@ export function listTasksFor(db: Db, householdId: string, isoDate: string, tz: s
       repeat: row.repeat,
       points: row.points,
       steps: stepsOf(row),
+      visibility: (row.visibility ?? "family") as Task["visibility"],
       stepsDone,
       createdBy: row.created_by,
       occurrenceDate: recurring ? isoDate : null,
@@ -168,12 +172,13 @@ export const tasksModule: CoreModule = {
   description: "Kids' chores and family to-dos with completion and swapping.",
   register({ app, db, bus }) {
     app.get("/api/tasks", (req, reply) => {
-      if (!requireAccess(db, req, reply)) return;
+      const access = requireAccess(db, req, reply);
+      if (!access) return;
       const household = getHousehold(db)!;
       const query = parse(z.object({ date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional() }), req.query, reply);
       if (!query) return;
       const isoDate = query.date ?? isoDateOf(now(), household.timezone);
-      return { date: isoDate, tasks: listTasksFor(db, household.id, isoDate, household.timezone) };
+      return { date: isoDate, tasks: listTasksFor(db, household.id, isoDate, household.timezone, access) };
     });
 
     app.post("/api/tasks", (req, reply) => {
@@ -183,11 +188,11 @@ export const tasksModule: CoreModule = {
       if (!input) return;
       const id = uid();
       db.prepare(
-        `INSERT INTO tasks (id, household_id, title, notes, icon, kind, assignee_id, due_at, repeat, points, steps_json, created_by, created_at)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        `INSERT INTO tasks (id, household_id, title, notes, icon, kind, assignee_id, due_at, repeat, points, steps_json, visibility, created_by, created_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       ).run(id, access.householdId, input.title, input.notes, input.icon, input.kind,
         input.assigneeId, input.dueAt, input.repeat, input.points,
-        input.steps.length ? JSON.stringify(input.steps) : null, access.memberId, now());
+        input.steps.length ? JSON.stringify(input.steps) : null, input.visibility ?? "family", access.memberId, now());
       recordAudit(db, access.householdId, actorOf(access), "task", id, "create", `${access.name} added "${input.title}"`);
       bus.emit("task.created", { taskId: id, title: input.title, actor: actorOf(access) });
       reply.code(201);
@@ -206,7 +211,7 @@ export const tasksModule: CoreModule = {
         return;
       }
       db.prepare(
-        "UPDATE tasks SET title = ?, notes = ?, icon = ?, kind = ?, assignee_id = ?, due_at = ?, repeat = ?, points = ?, steps_json = ? WHERE id = ?",
+        "UPDATE tasks SET title = ?, notes = ?, icon = ?, kind = ?, assignee_id = ?, due_at = ?, repeat = ?, points = ?, steps_json = ?, visibility = ? WHERE id = ?",
       ).run(
         patch.title ?? row.title, patch.notes ?? row.notes, patch.icon ?? row.icon, patch.kind ?? row.kind,
         patch.assigneeId !== undefined ? patch.assigneeId : row.assignee_id,
@@ -214,6 +219,7 @@ export const tasksModule: CoreModule = {
         patch.repeat !== undefined ? patch.repeat : row.repeat,
         patch.points !== undefined ? patch.points : row.points,
         patch.steps !== undefined ? (patch.steps.length ? JSON.stringify(patch.steps) : null) : row.steps_json,
+        patch.visibility ?? row.visibility ?? "family",
         id,
       );
       recordAudit(db, access.householdId, actorOf(access), "task", id, "update",

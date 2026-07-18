@@ -78,6 +78,12 @@ createEvent(db, bus, householdId, actor, {
   category: "birthday", startAt: at(9, 0), endAt: at(10, 0), allDay: true, timezone: TZ,
   rrule: null, assigneeIds: [], reminderMinutes: null,
 });
+// Private: only Jared (and other parents/AIs) ever receive this one.
+createEvent(db, bus, householdId, actor, {
+  title: "Mortgage payment due", description: "", location: "",
+  category: "other", visibility: "private", startAt: at(3, 9), endAt: at(3, 9, 30), allDay: false,
+  timezone: TZ, rrule: null, assigneeIds: [], reminderMinutes: 60,
+});
 
 // ---- Chores & to-dos ----
 function addTask(title: string, icon: string, kind: "chore" | "todo", assignee: string | null, repeat: string | null, dueAt: number | null, points: number | null) {

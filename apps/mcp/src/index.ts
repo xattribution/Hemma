@@ -137,6 +137,7 @@ server.tool(
     reminder_minutes: z.number().int().nullable().default(null),
     location: z.string().default(""),
     description: z.string().default(""),
+    visibility: z.enum(["family", "private"]).default("family").describe("private = only the creator (and parents) — use for things like bill reminders"),
   },
   async (args) => {
     const startAt = await toMs(args.date, args.all_day ? "00:00" : args.start_time);
@@ -150,7 +151,7 @@ server.tool(
       method: "POST",
       body: {
         title: args.title, startAt, endAt, allDay: args.all_day, timezone: await householdTz(),
-        category: args.category, rrule: args.rrule, assigneeIds,
+        category: args.category, rrule: args.rrule, assigneeIds, visibility: args.visibility,
         reminderMinutes: args.reminder_minutes, location: args.location, description: args.description,
       },
     });
@@ -233,6 +234,7 @@ server.tool(
       assignee_name: z.string().nullable().default(null),
       points: z.number().int().nullable().default(null),
     })).default([]),
+    visibility: z.enum(["family", "private"]).default("family"),
   },
   async (args) => {
     const assigneeId = args.assignee_name ? (await resolveMember(args.assignee_name)).id : null;
@@ -245,7 +247,7 @@ server.tool(
       method: "POST",
       body: {
         title: args.title, icon: args.icon, kind: args.kind, assigneeId,
-        repeat: args.repeat, points: args.points, steps,
+        repeat: args.repeat, points: args.points, steps, visibility: args.visibility,
         dueAt: args.due_date ? await toMs(args.due_date, args.due_time) : null,
       },
     }));

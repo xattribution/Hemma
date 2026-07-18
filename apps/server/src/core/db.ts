@@ -5,7 +5,7 @@ import crypto from "node:crypto";
 
 export type Db = Database.Database;
 
-const SCHEMA_VERSION = 9;
+const SCHEMA_VERSION = 10;
 
 const SCHEMA = /* sql */ `
 CREATE TABLE households (
@@ -333,6 +333,12 @@ function migrate(db: Db) {
         deleted_at INTEGER
       );
     `);
+  }
+  if (version < 10) {
+    // Audience control: 'family' (everyone) or 'private' (creator only —
+    // parents/AIs retain access; kids and displays never receive them).
+    db.exec("ALTER TABLE events ADD COLUMN visibility TEXT NOT NULL DEFAULT 'family';");
+    db.exec("ALTER TABLE tasks ADD COLUMN visibility TEXT NOT NULL DEFAULT 'family';");
   }
   db.pragma(`user_version = ${SCHEMA_VERSION}`);
 }

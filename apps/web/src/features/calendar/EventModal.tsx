@@ -60,6 +60,7 @@ export function EventModal({ members, instance, defaultStart, onClose }: Props) 
   const [location, setLocation] = useState(instance?.location ?? "");
   const [description, setDescription] = useState(instance?.description ?? "");
   const [assigneeIds, setAssigneeIds] = useState<string[]>(instance?.assigneeIds ?? []);
+  const [visibility, setVisibility] = useState<"family" | "private">(instance?.visibility ?? "family");
   const [repeat, setRepeat] = useState<Repeat>(initialRepeat.repeat);
   const [weeklyDays, setWeeklyDays] = useState<number[]>(
     initialRepeat.days.length ? initialRepeat.days : [start.getDay()],
@@ -86,6 +87,7 @@ export function EventModal({ members, instance, defaultStart, onClose }: Props) 
       timezone: deviceTimezone(),
       rrule: buildRrule(repeat, weeklyDays),
       assigneeIds,
+      visibility,
       reminderMinutes: reminder === "none" ? null : Number(reminder),
     };
   };
@@ -244,6 +246,21 @@ export function EventModal({ members, instance, defaultStart, onClose }: Props) 
                   )
                 } />
             ))}
+          </div>
+        </div>
+
+        <div>
+          <label className={labelCls}>Who sees it?</label>
+          <div className="flex gap-2">
+            <button type="button" onClick={() => setVisibility("family")}
+              className={`flex-1 rounded-lg border px-3 py-1.5 text-sm font-bold ${visibility === "family" ? "border-sky bg-sky text-white" : "border-line"}`}>
+              👪 Whole family
+            </button>
+            <button type="button" onClick={() => setVisibility("private")}
+              title="Only you (parents and connected AIs can always see everything)"
+              className={`flex-1 rounded-lg border px-3 py-1.5 text-sm font-bold ${visibility === "private" ? "border-sky bg-sky text-white" : "border-line"}`}>
+              🔒 Just me
+            </button>
           </div>
         </div>
 
