@@ -9,7 +9,7 @@ start here (and confirm priorities with Jared first).
 | Feature | State | Seam / plan |
 | --- | --- | --- |
 | **Cross-family file sharing** from the NAS `files/` folder | NAS photo source SHIPPED (nas plugin + unified /api/photos source); `files/` folder is created but sharing isn't built | Ride the federation sealed channel; see wiki/immich.md |
-| External calendars & photos (ICS subs → iCloud CalDAV → Google Calendar OAuth → Google Photos Picker, iCloud shared albums) | Not started; difficulty ladder researched | `docs/integrations-plan.md` (note: Google killed third-party full-library Photos access in 2025 — Picker/album mirror only) |
+| External calendars & photos (ICS subs → iCloud CalDAV → Google Calendar OAuth → Google Photos Picker, iCloud shared albums) | **ICS subscriptions SHIPPED** (`core.calsync`, Settings → Other calendars, read-only imports w/ filters); the OAuth/CalDAV rungs are next | `docs/integrations-plan.md` (note: Google killed third-party full-library Photos access in 2025 — Picker/album mirror only) |
 | AI assistant plugin (chat box, "magic add", recall answers) | Not started (Phase 2 of original plan) | Provider-agnostic adapter (Ollama/Anthropic/OpenAI); local-first, **no external APIs by default**; reuse REST services + audit grounding |
 | Voice control (wake word + STT) | Not started (Phase 3) | **Whisper preferred**; feeds the Phase-2 intent parser |
 | Email → calendar ingest | Not started (Phase 5) | IMAP watcher plugin → extraction → **direct-add by default, approval tray optional** (user's explicit choice) |

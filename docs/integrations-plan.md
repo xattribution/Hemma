@@ -8,7 +8,7 @@ the calendar import pipeline).
 
 | Rung | What | Difficulty | Notes |
 | --- | --- | --- | --- |
-| 1 | **ICS subscription URLs** (read-only) | **Low** | Every provider exposes one: Google's "secret address in iCal format", iCloud public/shared calendar links (webcal://), Outlook published calendars. One poller (rrule already in-house), per-subscription **category mapping + keyword/type filters** ("only import titles matching 'practice'", "skip all-day"), items land read-only with a source badge. Covers ~80 % of "see my work calendar in Hemma". No OAuth, no app review. |
+| 1 | **ICS subscription URLs** (read-only) | **Done** | Shipped: Settings → Other calendars. Paste any ICS/webcal link (Google secret address, iCloud public link, Outlook published, TeamSnap/school "subscribe"); 30-min poller, per-subscription category/assignee/visibility mapping + include/exclude keywords + skip-all-day; imported events are read-only with a source badge; non-technical link-finding walkthroughs built into the UI. |
 | 2 | **iCloud via CalDAV** (read-only → 2-way later) | **Medium** | Apple officially supports CalDAV (`caldav.icloud.com`) with **app-specific passwords** — no developer account, no OAuth. Read-only import is a well-trodden path; 2-way needs etag conflict care. |
 | 3 | **Google Calendar API** (2-way) | **Medium-high** | Clean API (syncTokens for incremental pulls), but each self-hosted family must create their own Google Cloud OAuth client (the Home Assistant pattern) — clunky one-time setup we'd have to document carefully; verification warnings otherwise. Do read-only first, then push. |
 

@@ -61,7 +61,7 @@ tokens + an MCP server.
 
 **One process, one file.** The server is a single Fastify process over one
 better-sqlite3 database (WAL). Migrations are plain SQL steps keyed by
-`PRAGMA user_version` (currently **9**) in `core/db.ts`. There is no ORM.
+`PRAGMA user_version` (currently **11**) in `core/db.ts`. There is no ORM.
 Modules run raw SQL against tables they own; cross-module reads go through
 exported service functions (`loadChecklists`, `createEvent`, …).
 
@@ -91,9 +91,9 @@ permissions and audit attribution. Details in [server-core.md](server-core.md).
 
 - Port **49733** (host user runs Obsidian on 3000). Relay: **8790**.
 - `pnpm dev` runs server (tsx watch) + web (Vite:5173, proxying /api).
-- Tests: `pnpm --filter @coord/server test` (Vitest, ~59 tests incl. a
+- Tests: `pnpm --filter @coord/server test` (Vitest, ~85 tests incl. a
   two-instance federation suite over real HTTP + real crypto, points/group
-  chores, and a fake-Immich proxy suite).
+  chores, fake-Immich proxy and fake-ICS subscription suites).
 - Seed demo data: `pnpm --filter @coord/server seed` (Jared/Sam `family123`,
   Mia PIN `1111` teen-tier, Leo pattern cat→horse→cat→goat little-tier).
 - Browser verification: playwright-core with

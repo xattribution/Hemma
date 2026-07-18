@@ -62,6 +62,25 @@ parent-level permissions.
   "occurrenceStart": <ms of the occurrence being edited>, "patch": { ...fields } }
 - DELETE /api/events/:id?scope=single&occurrenceStart=<ms>
 
+## Subscribed calendars (ICS imports)
+
+The family can follow outside calendars (Google "secret address", iCloud
+public links, Outlook published calendars, team apps). Imported events show
+up in GET /api/events with a non-null sourceLabel and are READ-ONLY — a
+PATCH/DELETE on them returns 400. To change one, the family edits the
+original calendar. Managing subscriptions needs parent-level access:
+
+- GET /api/subscriptions → each: id, label, url, category, visibility,
+  assigneeId, includeKeywords, excludeKeywords, skipAllDay, lastSyncAt,
+  lastStatus ("ok: N events" or a readable error), eventCount
+- POST /api/subscriptions — { "url": "https://…/basic.ics" } plus any of
+  category/visibility/assigneeId/includeKeywords ("practice, game")/
+  excludeKeywords/skipAllDay. The label defaults to the feed's own name.
+  Syncs immediately; feeds re-sync every 30 minutes after that.
+- PATCH /api/subscriptions/:id — same fields; resyncs
+- POST /api/subscriptions/:id/sync — refresh now
+- DELETE /api/subscriptions/:id — unsubscribe AND remove its events
+
 ## Chores & to-dos
 
 - GET /api/tasks?date=YYYY-MM-DD → tasks as they stand that day

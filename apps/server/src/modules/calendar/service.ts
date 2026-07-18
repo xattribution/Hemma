@@ -41,6 +41,20 @@ interface EventRow {
   rrule: string | null;
   created_by: string | null;
   visibility: string;
+  source_sub_id: string | null;
+}
+
+/** Imported (subscribed-calendar) events are read-only inside Hemma. */
+function rejectIfImported(db: Db, row: EventRow): void {
+  if (!row.source_sub_id) return;
+  const sub = db.prepare("SELECT label FROM cal_subscriptions WHERE id = ?").get(row.source_sub_id) as
+    | { label: string }
+    | undefined;
+  const from = sub?.label ? ` from "${sub.label}"` : "";
+  throw Object.assign(
+    new Error(`This event is imported${from} — change it in the original calendar and it'll update here.`),
+    { statusCode: 400 },
+  );
 }
 
 function loadExceptions(db: Db, eventId: string): ExceptionSpec[] {
@@ -76,6 +90,10 @@ function toApiEvent(db: Db, row: EventRow): CoordEvent {
     reminderMinutes: reminder?.offset_minutes ?? null,
     visibility: (row.visibility ?? "family") as CoordEvent["visibility"],
     createdBy: row.created_by,
+    sourceLabel: row.source_sub_id
+      ? ((db.prepare("SELECT label FROM cal_subscriptions WHERE id = ?").get(row.source_sub_id) as { label: string } | undefined)
+          ?.label || "a subscribed calendar")
+      : null,
   };
 }
 
@@ -170,6 +188,7 @@ export function updateEvent(db: Db, bus: EventBus, householdId: string, actor: A
     .prepare("SELECT * FROM events WHERE id = ? AND household_id = ? AND deleted_at IS NULL")
     .get(eventId, householdId) as EventRow | undefined;
   if (!row) throw Object.assign(new Error("Event not found"), { statusCode: 404 });
+  rejectIfImported(db, row);
 
   const patch = eventInputSchema.partial().parse(args.patch);
   const scope: EditScope = row.rrule ? args.scope : "all";
@@ -254,6 +273,7 @@ export function deleteEvent(
     .prepare("SELECT * FROM events WHERE id = ? AND household_id = ? AND deleted_at IS NULL")
     .get(eventId, householdId) as EventRow | undefined;
   if (!row) throw Object.assign(new Error("Event not found"), { statusCode: 404 });
+  rejectIfImported(db, row);
 
   const effectiveScope: EditScope = row.rrule ? scope : "all";
   if (effectiveScope === "single" && occurrenceStart !== undefined) {

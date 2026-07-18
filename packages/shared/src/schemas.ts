@@ -160,6 +160,8 @@ export type EventInput = z.infer<typeof eventInputSchema>;
 export const eventSchema = eventInputSchema.extend({
   id: z.string(),
   createdBy: z.string().nullable(),
+  /** Set when the event came from a subscribed calendar (read-only here). */
+  sourceLabel: z.string().nullable().default(null),
 });
 export type CoordEvent = z.infer<typeof eventSchema>;
 
@@ -174,6 +176,40 @@ export type EventInstance = z.infer<typeof eventInstanceSchema>;
 
 export const editScopeSchema = z.enum(["single", "future", "all"]);
 export type EditScope = z.infer<typeof editScopeSchema>;
+
+// ---------- Calendar subscriptions (ICS feeds) ----------
+
+/**
+ * A read-only feed from another calendar (Google's "secret address", iCloud
+ * public links, Outlook published calendars, TeamSnap/school "subscribe"
+ * links). Hemma polls it and mirrors matching events; nothing is ever sent
+ * back. Imported events carry sourceLabel and can't be edited in Hemma.
+ */
+export const calSubscriptionInputSchema = z.object({
+  /** Shown on imported events; defaults to the feed's own calendar name. */
+  label: z.string().trim().max(60).default(""),
+  url: z.string().trim().min(1).max(2000),
+  category: eventCategorySchema.default("other"),
+  visibility: visibilitySchema.default("family"),
+  /** Whose calendar this is — imported events get this assignee's color. */
+  assigneeId: z.string().nullable().default(null),
+  /** Only import events whose title contains one of these words (empty = all). */
+  includeKeywords: z.string().max(300).default(""),
+  /** Skip events whose title contains one of these words. */
+  excludeKeywords: z.string().max(300).default(""),
+  skipAllDay: z.boolean().default(false),
+});
+export type CalSubscriptionInput = z.infer<typeof calSubscriptionInputSchema>;
+
+export const calSubscriptionSchema = calSubscriptionInputSchema.extend({
+  id: z.string(),
+  lastSyncAt: z.number().nullable(),
+  /** "ok: 12 events" or a short human-readable error from the last sync. */
+  lastStatus: z.string().nullable(),
+  eventCount: z.number().int(),
+  createdAt: z.number(),
+});
+export type CalSubscription = z.infer<typeof calSubscriptionSchema>;
 
 // ---------- Tasks & chores ----------
 

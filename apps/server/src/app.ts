@@ -24,6 +24,7 @@ import { integrationsModule } from "./modules/integrations.js";
 import { federationModule } from "./modules/federation.js";
 import { pointsModule } from "./modules/points.js";
 import { backupModule } from "./modules/backup.js";
+import { subscriptionsModule } from "./modules/subscriptions.js";
 import { photosModule } from "./modules/photos.js";
 import { nasPlugin } from "./plugins/nas.js";
 import { dailyQuotePlugin } from "./plugins/daily-quote.js";
@@ -92,6 +93,7 @@ export async function buildApp(options: BuildOptions): Promise<{ app: FastifyIns
     federationModule,
     pointsModule,
     backupModule,
+    subscriptionsModule,
     photosModule,
     dailyQuotePlugin,
     immichPlugin,

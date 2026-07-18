@@ -23,6 +23,11 @@ screen on iPhone and Android alike and runs full-screen on a kitchen display.
 - **Calendar** — month / week / day views, recurring events (RFC-5545 RRULE),
   "just this one / this and following / whole series" edits, per-member colors,
   categories, DST-safe timezone handling
+- **Other calendars, imported** — paste any calendar link (Google's "secret
+  address", an iCloud public calendar, Outlook, TeamSnap/school "subscribe"
+  links) and it appears in Hemma and stays current on its own — read-only,
+  with per-feed category/person mapping, keyword filters and a private
+  option; the Settings page walks non-technical folks to the right link
 - **Family & roles** — parents sign in with a password, kids with a big-button
   4-digit PIN from an avatar picker; parents manage, kids do
 - **Chores & to-dos** — daily/weekday/weekend repeats, tap-to-complete,

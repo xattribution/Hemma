@@ -209,6 +209,47 @@ export function usePointsMutations() {
   };
 }
 
+// ---------- Calendar subscriptions ----------
+
+export const useSubscriptions = (enabled = true) =>
+  useQuery({
+    queryKey: ["subscriptions"],
+    queryFn: () =>
+      api<{ subscriptions: import("@coord/shared").CalSubscription[] }>("/api/subscriptions"),
+    select: (d) => d.subscriptions,
+    enabled,
+  });
+
+export function useSubscriptionMutations() {
+  const qc = useQueryClient();
+  const invalidate = () => {
+    void qc.invalidateQueries({ queryKey: ["subscriptions"] });
+    void qc.invalidateQueries({ queryKey: ["events"] });
+    void qc.invalidateQueries({ queryKey: ["dashboard"] });
+  };
+  return {
+    create: useMutation({
+      mutationFn: (input: Partial<import("@coord/shared").CalSubscriptionInput> & { url: string }) =>
+        api<import("@coord/shared").CalSubscription>("/api/subscriptions", { method: "POST", body: input }),
+      onSuccess: invalidate,
+    }),
+    update: useMutation({
+      mutationFn: ({ id, ...patch }: Partial<import("@coord/shared").CalSubscriptionInput> & { id: string }) =>
+        api<import("@coord/shared").CalSubscription>(`/api/subscriptions/${id}`, { method: "PATCH", body: patch }),
+      onSuccess: invalidate,
+    }),
+    sync: useMutation({
+      mutationFn: (id: string) =>
+        api<import("@coord/shared").CalSubscription>(`/api/subscriptions/${id}/sync`, { method: "POST" }),
+      onSuccess: invalidate,
+    }),
+    remove: useMutation({
+      mutationFn: (id: string) => api(`/api/subscriptions/${id}`, { method: "DELETE" }),
+      onSuccess: invalidate,
+    }),
+  };
+}
+
 // ---------- Checklists ----------
 
 export const useChecklists = () =>

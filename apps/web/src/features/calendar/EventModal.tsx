@@ -132,6 +132,32 @@ export function EventModal({ members, instance, defaultStart, onClose }: Props) 
     else save("all");
   };
 
+  // Imported (subscribed-calendar) events are read-only: show, don't edit.
+  if (instance?.sourceLabel) {
+    const cat = EVENT_CATEGORIES[instance.category];
+    return (
+      <Modal title={instance.title} onClose={onClose}>
+        <div className="space-y-3">
+          <div className="rounded-lg border border-line bg-card px-3 py-2 text-sm font-bold">
+            📥 From "{instance.sourceLabel}" — to change it, edit it in that
+            calendar and it'll update here on its own.
+          </div>
+          <div className="text-sm font-semibold text-ink-soft">
+            {cat.icon} {cat.label} ·{" "}
+            {instance.allDay
+              ? format(new Date(instance.occurrenceStart), "EEEE, MMM d")
+              : `${format(new Date(instance.occurrenceStart), "EEEE, MMM d · h:mm a")} – ${format(new Date(instance.occurrenceEnd), "h:mm a")}`}
+          </div>
+          {instance.location && <div className="text-sm font-semibold">📍 {instance.location}</div>}
+          {instance.description && <p className="whitespace-pre-wrap text-sm">{instance.description}</p>}
+          <div className="flex justify-end">
+            <button type="button" className={primaryBtn} onClick={onClose}>Close</button>
+          </div>
+        </div>
+      </Modal>
+    );
+  }
+
   if (scopeAsk) {
     const apply = scopeAsk === "save" ? save : del;
     return (

@@ -5,7 +5,7 @@ import crypto from "node:crypto";
 
 export type Db = Database.Database;
 
-const SCHEMA_VERSION = 10;
+const SCHEMA_VERSION = 11;
 
 const SCHEMA = /* sql */ `
 CREATE TABLE households (
@@ -339,6 +339,30 @@ function migrate(db: Db) {
     // parents/AIs retain access; kids and displays never receive them).
     db.exec("ALTER TABLE events ADD COLUMN visibility TEXT NOT NULL DEFAULT 'family';");
     db.exec("ALTER TABLE tasks ADD COLUMN visibility TEXT NOT NULL DEFAULT 'family';");
+  }
+  if (version < 11) {
+    // Calendar subscriptions (ICS feeds): read-only imports from Google/
+    // iCloud/Outlook/team-app links. Imported events carry source_sub_id so
+    // they can be badged, protected from edits, and swept on resync/delete.
+    db.exec(/* sql */ `
+      CREATE TABLE cal_subscriptions (
+        id TEXT PRIMARY KEY,
+        household_id TEXT NOT NULL,
+        label TEXT NOT NULL,
+        url TEXT NOT NULL,
+        category TEXT NOT NULL DEFAULT 'other',
+        visibility TEXT NOT NULL DEFAULT 'family',
+        assignee_id TEXT,
+        include_keywords TEXT NOT NULL DEFAULT '',
+        exclude_keywords TEXT NOT NULL DEFAULT '',
+        skip_all_day INTEGER NOT NULL DEFAULT 0,
+        last_sync_at INTEGER,
+        last_status TEXT,
+        created_at INTEGER NOT NULL
+      );
+      ALTER TABLE events ADD COLUMN source_sub_id TEXT;
+      CREATE INDEX idx_events_source_sub ON events(source_sub_id);
+    `);
   }
   db.pragma(`user_version = ${SCHEMA_VERSION}`);
 }

@@ -18,6 +18,7 @@
     "@fastify/websocket": "^11.0.1",
     "better-sqlite3": "^11.7.0",
     "fastify": "^5.2.0",
+    "node-ical": "^0.26.1",
     "rrule": "^2.8.1",
     "tsx": "^4.19.2",
     "web-push": "^3.6.7",
