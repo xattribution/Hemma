@@ -1,8 +1,12 @@
 # Hemma wiki — the full context handoff
 
-**Product name: Hemma** (Swedish: "at home"). Repo + internal identifiers
-stay `coord` deliberately (sessions, storage keys, package names, env vars
-— renaming breaks live deployments). Brand only user-visible surfaces.
+**Product name: Hemma** (Swedish: "at home"). **The app was originally
+named Coord** — if you're applying updates and see "coord" in code, that is
+NOT stale: repo + internal identifiers stay `coord` deliberately
+(`coord.db`, `coord-data` volume, `coord_session` cookie, `coord.*` storage
+keys, `@coord/*` packages, `COORD_URL`/`COORD_TOKEN` env — renaming any of
+them breaks live deployments). Brand only user-visible surfaces. Full rule
+in the root `CLAUDE.md`.
 
 This wiki exists so that a **new engineer or AI agent can pick up the project
 with zero prior conversation**. It documents what each module does, what it

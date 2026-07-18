@@ -27,6 +27,9 @@ parent-level permissions.
 - Dates in query params are ISO (YYYY-MM-DD); the household timezone governs
   what "today" means — read it from GET /api/auth/me (household.timezone).
 - Errors: { "error": "message" } with 4xx/5xx status.
+- Hemma was formerly named "Coord" — internal identifiers kept the old
+  name (env vars COORD_URL/COORD_TOKEN, database coord.db, cookie
+  coord_session). Same product; don't be confused by the mix.
 
 ## Discover state
 
