@@ -1,7 +1,7 @@
 [package]
 name = "coord-shell"
 version = "0.1.0"
-description = "Native shell for Coord — opens your family's own Coord server."
+description = "Native shell for Hemma — opens your family's own Hemma server."
 edition = "2021"
 
 [lib]

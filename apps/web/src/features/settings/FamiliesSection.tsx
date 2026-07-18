@@ -44,7 +44,7 @@ export function FamiliesSection() {
     <section className="rounded-card bg-card p-4 shadow-card">
       <h3 className="mb-2 flex items-center gap-2 font-extrabold"><HeartHandshake size={18} /> Family connections</h3>
       <p className="mb-3 text-sm font-semibold text-ink-soft">
-        Share chosen lists and events with grandma's or your brother's Coord. Everything between
+        Share chosen lists and events with grandma's or your brother's Hemma. Everything between
         families is end-to-end encrypted; the optional connection server only relays sealed blobs
         and keeps nothing.
       </p>
@@ -165,7 +165,7 @@ export function FamiliesSection() {
           <p className="mb-2 text-center text-5xl font-extrabold tracking-widest text-coral">{code}</p>
           <p className="text-center text-sm font-semibold text-ink-soft">
             Tell the other family this code (good for 10 minutes). They enter it under
-            Settings → Family connections → Enter a code{data.relayEnabled ? "." : ", along with your Coord address."}
+            Settings → Family connections → Enter a code{data.relayEnabled ? "." : ", along with your Hemma address."}
           </p>
         </Modal>
       )}
@@ -198,7 +198,7 @@ function ConnectModal({ relayEnabled, onClose }: { relayEnabled: boolean; onClos
             value={code} onChange={(e) => setCode(e.target.value.toUpperCase())} placeholder="TIGER-42" required maxLength={12} />
         </div>
         <div>
-          <label className={labelCls}>Their Coord address {relayEnabled ? "(leave blank to use the connection server)" : ""}</label>
+          <label className={labelCls}>Their Hemma address {relayEnabled ? "(leave blank to use the connection server)" : ""}</label>
           <input className={inputCls} type="url" value={url} onChange={(e) => setUrl(e.target.value)}
             placeholder="https://coord.theirfamily.com" required={!relayEnabled} />
         </div>

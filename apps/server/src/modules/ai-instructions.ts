@@ -3,9 +3,9 @@
  * connected LLM needs to drive Coord over plain REST. Keep in sync with the
  * routes; this is a contract with automation clients.
  */
-export const AI_INSTRUCTIONS = `# Coord — API instructions for AI assistants
+export const AI_INSTRUCTIONS = `# Hemma — API instructions for AI assistants
 
-Coord is a self-hosted family coordination calendar: events, kids' chores,
+Hemma is a self-hosted family coordination calendar: events, kids' chores,
 shared shopping lists, reminders, displays. You (the assistant) can read and
 manage all of it over REST. Everything you do is attributed to your token's
 label in the family's history feed, so act like a polite member of the family.
@@ -21,7 +21,7 @@ parent-level permissions.
 
 ## Conventions
 
-- Base URL: the family's Coord server, e.g. https://coord.example.com
+- Base URL: the family's Hemma server, e.g. https://coord.example.com
 - All bodies are JSON. Timestamps are UTC milliseconds since epoch.
 - Recurring events use RFC-5545 RRULE strings (e.g. "FREQ=WEEKLY;BYDAY=MO,WE").
 - Dates in query params are ISO (YYYY-MM-DD); the household timezone governs

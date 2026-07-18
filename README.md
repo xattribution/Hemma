@@ -1,4 +1,6 @@
-# 🏡 Coord — the family coordination calendar
+# 🏡 Hemma — the family coordination calendar
+
+*Hemma — Swedish for "at home."*
 
 A self-hosted, family-friendly hub that organizes your family's life: a classic
 light-mode calendar, kids' chores with points and swapping, shared shopping
@@ -6,10 +8,15 @@ lists, reminders, and an always-on kitchen-tablet dashboard — all syncing in
 real time to every phone, tablet and browser in the house.
 
 Your data lives on **your** server (a NAS, mini-PC or Raspberry-class box).
-One codebase, every platform: Coord is a PWA, so it installs to the home
+One codebase, every platform: Hemma is a PWA, so it installs to the home
 screen on iPhone and Android alike and runs full-screen on a kitchen display.
 
-![Coord](apps/web/public/icons/icon-192.png)
+> Naming note: the app is **Hemma**; the repo and internal identifiers
+> (`coord.db`, the `coord-data` volume, `@coord/*` packages, `COORD_URL`)
+> keep their original names on purpose — renaming them would break running
+> deployments for zero user benefit.
+
+![Hemma](apps/web/public/icons/icon-192.png)
 
 ## What's inside (Phase 1)
 
@@ -55,9 +62,9 @@ screen on iPhone and Android alike and runs full-screen on a kitchen display.
 - **Plugin architecture** — the seams for what's next (see roadmap) are built
   and already used by the core features themselves
 
-## The three pieces of Coord
+## The three pieces of Hemma
 
-Coord is deliberately split into three separate things. Know which one
+Hemma is deliberately split into three separate things. Know which one
 you're touching:
 
 ```
@@ -104,7 +111,7 @@ git clone -b claude/family-coordination-calendar-bs4zqo https://github.com/xattr
 cd coord
 ```
 
-To just **run** Coord on a server, skip straight to [Production (Docker)](#production-docker) —
+To just **run** Hemma on a server, skip straight to [Production (Docker)](#production-docker) —
 no Node or pnpm needed on the host.
 
 ## Quick start (development)
@@ -281,7 +288,7 @@ decisions for them are pinned in [docs/design-decisions.md](docs/design-decision
    providers (Ollama-style server), hosted APIs only by explicit opt-in
 2. **Voice** — wake word + speech-to-text (Whisper preferred, locally hosted)
    feeding the same intent parser; microphone mode for the kitchen display
-3. **Cross-family federation** — pair with grandma's or your brother's Coord
+3. **Cross-family federation** — pair with grandma's or your brother's Hemma
    instance (QR/invite code); parents choose exactly which categories/lists
    to share; conflicts resolve by write order, with the full trail in history
 4. **Email → calendar** — an AI-assisted inbox watcher that adds events from

@@ -1,4 +1,8 @@
-# Coord wiki — the full context handoff
+# Hemma wiki — the full context handoff
+
+**Product name: Hemma** (Swedish: "at home"). Repo + internal identifiers
+stay `coord` deliberately (sessions, storage keys, package names, env vars
+— renaming breaks live deployments). Brand only user-visible surfaces.
 
 This wiki exists so that a **new engineer or AI agent can pick up the project
 with zero prior conversation**. It documents what each module does, what it
@@ -7,7 +11,7 @@ depends on, which UI surfaces it needs, and what is deliberately unfinished.
 app itself — that one is for AIs *driving* a live Coord, this wiki is for
 anyone *building* Coord.)
 
-## What Coord is
+## What Hemma is
 
 A self-hosted family coordination hub: classic calendar, kids' chores with
 checkable steps, shared shopping/packing/meal lists, always-on wall displays,

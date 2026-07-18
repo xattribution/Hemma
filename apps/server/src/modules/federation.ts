@@ -304,7 +304,7 @@ export const federationModule: CoreModule = {
         return;
       }
       if (body.pubkey === keys.publicKey) {
-        reply.code(400).send({ error: "That's this family's own code — enter it on the OTHER family's Coord" });
+        reply.code(400).send({ error: "That's this family's own code — enter it on the OTHER family's Hemma" });
         return;
       }
       const offer = offers.get(body.code.toUpperCase());
@@ -419,7 +419,7 @@ export const federationModule: CoreModule = {
         }
         const { pubkey } = (await res.json()) as { pubkey: string };
         if (pubkey === keys.publicKey) {
-          reply.code(400).send({ error: "That address is this Coord itself — enter the OTHER family's address" });
+          reply.code(400).send({ error: "That address is this Hemma itself — enter the OTHER family's address" });
           return;
         }
         const dup = db.prepare("SELECT id FROM peers WHERE pubkey = ?").get(pubkey) as { id: string } | undefined;
@@ -444,7 +444,7 @@ export const federationModule: CoreModule = {
         return;
       }
       if (claim.pubkey === keys.publicKey) {
-        reply.code(400).send({ error: "That's this family's own code — enter it on the OTHER family's Coord" });
+        reply.code(400).send({ error: "That's this family's own code — enter it on the OTHER family's Hemma" });
         return;
       }
       const sharedKey = deriveSharedKey(keys.privateKey, claim.pubkey);

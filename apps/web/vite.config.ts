@@ -14,8 +14,8 @@ export default defineConfig({
       registerType: "autoUpdate",
       injectRegister: "auto",
       manifest: {
-        name: "Coord — Family Calendar",
-        short_name: "Coord",
+        name: "Hemma — Family Calendar",
+        short_name: "Hemma",
         description: "Your family's calendar, chores and lists — all in one cozy place.",
         theme_color: "#fdf8f0",
         background_color: "#fdf8f0",

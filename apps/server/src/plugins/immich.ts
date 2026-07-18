@@ -4,7 +4,7 @@ import { requireAccess, requireActor } from "../core/auth.js";
 import { parse } from "../core/http.js";
 
 /**
- * Immich connector — points Coord at the family's own Immich photo server.
+ * Immich connector — points Hemma at the family's own Immich photo server.
  *
  * The server proxies everything: the API key never reaches a browser, and
  * displays (which hold no member credentials) can still pull photos. Two
@@ -123,6 +123,25 @@ export const immichPlugin: CoreModule = {
 
     // ---------- photos (any signed-in principal, displays included) ----------
 
+    /**
+     * Immich's response shapes have drifted across major versions:
+     *   POST /search/random    → AssetResponseDto[]           (current)
+     *   POST /search/metadata  → { assets: { items: [...] } } (current, ordered/paged)
+     *   GET  /albums/:id       → { assets: [...] }            (pre-v2 only; v2 dropped it)
+     * Accept them all — and log every attempt, so `docker logs` explains
+     * a dry slideshow instead of leaving a bare "no photos" error.
+     */
+    const imagesOf = (json: unknown): string[] => {
+      const list = Array.isArray(json)
+        ? json
+        : ((json as { assets?: { items?: unknown[] } | unknown[] })?.assets as { items?: unknown[] })?.items
+          ?? ((json as { assets?: unknown[] })?.assets)
+          ?? [];
+      return (list as { id?: string; type?: string }[])
+        .filter((a) => a?.id && String(a.type ?? "IMAGE").toUpperCase() === "IMAGE")
+        .map((a) => a.id!);
+    };
+
     app.get("/api/p/immich/random", async (req, reply) => {
       if (!requireAccess(db, req, reply)) return;
       if (!configured()) {
@@ -131,40 +150,54 @@ export const immichPlugin: CoreModule = {
       }
       const query = parse(z.object({
         count: z.coerce.number().int().min(1).max(100).default(20),
-        // "in order" works when an album is chosen (albums have an order);
-        // server-wide random has none, so seq quietly falls back to shuffle.
+        // "in order" pages through /search/metadata (date order); random mode
+        // uses /search/random. Both accept an album filter.
         order: z.enum(["shuffle", "seq"]).default("shuffle"),
         offset: z.coerce.number().int().min(0).default(0),
       }), req.query, reply);
       if (!query) return;
       const { albumId } = config();
+      const albumFilter = albumId ? { albumIds: [albumId] } : {};
+      const tried: string[] = [];
 
-      let ids: string[] = [];
-      if (albumId) {
-        const res = await firstOk([() => immich(`/albums/${albumId}`), () => immich(`/album/${albumId}`)]);
-        if (res) {
-          const album = (await res.json()) as { assets?: { id: string; type: string }[] };
-          ids = (album.assets ?? []).filter((a) => a.type === "IMAGE").map((a) => a.id);
-          if (query.order === "seq" && ids.length) {
-            ids = Array.from({ length: Math.min(query.count, ids.length) }, (_, i) => ids[(query.offset + i) % ids.length]!);
-          } else {
-            ids.sort(() => Math.random() - 0.5);
-            ids = ids.slice(0, query.count);
+      const attempt = async (label: string, call: () => Promise<Response>): Promise<string[] | null> => {
+        try {
+          const res = await call();
+          if (!res.ok) {
+            tried.push(`${label} → HTTP ${res.status}`);
+            return null;
           }
+          const ids = imagesOf(await res.json());
+          tried.push(`${label} → ${ids.length} images`);
+          return ids.length ? ids : null;
+        } catch (err) {
+          tried.push(`${label} → ${(err as Error).message}`);
+          return null;
         }
-      } else {
-        const res = await firstOk([
-          () => immich("/search/random", { method: "POST", body: { size: query.count, type: "IMAGE" } }),
-          () => immich(`/assets/random?count=${query.count}`),
-          () => immich(`/asset/random?count=${query.count}`),
-        ]);
-        if (res) {
-          const assets = (await res.json()) as { id: string; type?: string }[];
-          ids = assets.filter((a) => (a.type ?? "IMAGE") === "IMAGE").map((a) => a.id);
+      };
+
+      let ids: string[] | null = null;
+      if (query.order === "seq") {
+        const page = Math.floor(query.offset / query.count) + 1;
+        ids = await attempt("POST /search/metadata", () =>
+          immich("/search/metadata", { method: "POST", body: { size: query.count, page, type: "IMAGE", order: "asc", ...albumFilter } }));
+      }
+      ids ??= await attempt("POST /search/random", () =>
+        immich("/search/random", { method: "POST", body: { size: query.count, type: "IMAGE", ...albumFilter } }));
+      // Older Immich versions: album info still carries assets / GET random exists.
+      if (!ids && albumId) {
+        const albumIds = await attempt(`GET /albums/${albumId.slice(0, 8)}…`, () => immich(`/albums/${albumId}`));
+        if (albumIds) {
+          ids = query.order === "seq"
+            ? Array.from({ length: Math.min(query.count, albumIds.length) }, (_, i) => albumIds[(query.offset + i) % albumIds.length]!)
+            : albumIds.sort(() => Math.random() - 0.5).slice(0, query.count);
         }
       }
-      if (!ids.length) {
-        reply.code(502).send({ error: "No photos came back from Immich" });
+      ids ??= await attempt("GET /assets/random", () => immich(`/assets/random?count=${query.count}`));
+
+      if (!ids?.length) {
+        log(`immich: no photos returned — ${tried.join("; ")}`);
+        reply.code(502).send({ error: `Immich returned no photos (${tried.join("; ")})` });
         return;
       }
       return { assets: ids.map((id) => ({ id })) };

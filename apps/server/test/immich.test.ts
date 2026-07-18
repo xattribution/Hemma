@@ -10,6 +10,7 @@ let cookie: string;
 let immich: http.Server;
 let immichUrl: string;
 let seenApiKey: string | null = null;
+let lastRandomBody: Record<string, unknown> = {};
 
 const PIXEL = Buffer.from("89504e470d0a1a0a", "hex"); // not a real PNG; bytes are bytes
 
@@ -23,8 +24,21 @@ beforeAll(async () => {
       res.setHeader("content-type", "application/json");
       res.end(JSON.stringify({ version: "v1.999.0" }));
     } else if (req.url === "/api/search/random" && req.method === "POST") {
+      let body = "";
+      req.on("data", (c) => { body += c; });
+      req.on("end", () => {
+        lastRandomBody = JSON.parse(body || "{}");
+        res.setHeader("content-type", "application/json");
+        res.end(JSON.stringify([{ id: "aaaaaaaa-1111-2222-3333-444444444444", type: "IMAGE" }]));
+      });
+      return;
+    } else if (req.url === "/api/search/metadata" && req.method === "POST") {
+      // current Immich shape: { assets: { items: [...] } }
       res.setHeader("content-type", "application/json");
-      res.end(JSON.stringify([{ id: "aaaaaaaa-1111-2222-3333-444444444444", type: "IMAGE" }]));
+      res.end(JSON.stringify({ assets: { items: [
+        { id: "bbbbbbbb-1111-2222-3333-444444444444", type: "IMAGE" },
+        { id: "cccccccc-1111-2222-3333-444444444444", type: "VIDEO" },
+      ] } }));
     } else if (req.url?.startsWith("/api/assets/") && req.url.endsWith("/thumbnail?size=preview")) {
       res.setHeader("content-type", "image/jpeg");
       res.end(PIXEL);
@@ -85,6 +99,25 @@ describe("immich plugin", () => {
     expect(asset.statusCode).toBe(200);
     expect(asset.headers["content-type"]).toBe("image/jpeg");
     expect(asset.rawPayload.equals(PIXEL)).toBe(true);
+  });
+
+  it("filters random requests by the chosen album (Immich v2 path)", async () => {
+    await app.inject({
+      method: "POST", url: "/api/p/immich/settings", headers: { cookie },
+      payload: { albumId: "album-42" },
+    });
+    const res = await app.inject({ method: "GET", url: "/api/p/immich/random?count=3", headers: { cookie } });
+    expect(res.statusCode).toBe(200);
+    expect(lastRandomBody.albumIds).toEqual(["album-42"]);
+    await app.inject({ method: "POST", url: "/api/p/immich/settings", headers: { cookie }, payload: { albumId: "" } });
+  });
+
+  it("'in order' pages through /search/metadata and filters to images", async () => {
+    const res = await app.inject({ method: "GET", url: "/api/p/immich/random?count=5&order=seq&offset=0", headers: { cookie } });
+    expect(res.statusCode).toBe(200);
+    const ids = res.json().assets.map((a: { id: string }) => a.id);
+    expect(ids).toContain("bbbbbbbb-1111-2222-3333-444444444444");
+    expect(ids).not.toContain("cccccccc-1111-2222-3333-444444444444"); // the video
   });
 
   it("keeps settings parent-only", async () => {

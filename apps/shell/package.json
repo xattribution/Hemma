@@ -2,7 +2,7 @@
   "name": "@coord/shell",
   "version": "0.1.0",
   "private": true,
-  "description": "Native shell for Coord — a tiny window/APK that opens your family's own Coord server.",
+  "description": "Native shell for Hemma — a tiny window/APK that opens your family's own Hemma server.",
   "scripts": {
     "tauri": "tauri",
     "dev": "tauri dev",
