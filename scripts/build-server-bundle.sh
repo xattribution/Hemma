@@ -27,6 +27,13 @@ mkdir -p "$OUT" "$CACHE"
 
 say() { printf '\033[1;34m▸ %s\033[0m\n' "$*"; }
 
+# fail before doing any work if a required tool is missing
+NEEDED="node curl tar"
+[ "$PLATFORM" = "win-x64" ] && NEEDED="$NEEDED unzip zip"
+for tool in $NEEDED; do
+  command -v "$tool" >/dev/null || { echo "!! '$tool' is required — on Debian/Ubuntu: sudo apt install -y $tool"; exit 1; }
+done
+
 # ---------- 1. web app + single-file server ----------
 if [ ! -d apps/web/dist ]; then
   say "building the web app"

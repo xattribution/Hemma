@@ -16,18 +16,22 @@
 #      finishes (~30 min) — no second step for you.
 set -euo pipefail
 
-VERSION="${1:?usage: release.sh <version> [--push-image]}"
+say() { printf '\033[1;34m▸ %s\033[0m\n' "$*"; }
+die() { printf '\033[1;31m✗ %s\033[0m\n' "$*"; exit 1; }
+
+VERSION="${1:-}"
+[[ "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+([-.][0-9A-Za-z.]+)?$ ]] \
+  || die "usage: release.sh <version> [--push-image] — version looks like 0.2.0 (got: '${VERSION:-nothing}')"
 PUSH_IMAGE=0; [ "${2:-}" = "--push-image" ] && PUSH_IMAGE=1
 TAG="v$VERSION"
 IMAGE="ghcr.io/xattribution/hemma"
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$ROOT"
 
-say() { printf '\033[1;34m▸ %s\033[0m\n' "$*"; }
-die() { printf '\033[1;31m✗ %s\033[0m\n' "$*"; exit 1; }
-
-# ---------- 1. gates ----------
-command -v gh >/dev/null || die "gh (GitHub CLI) is required: https://cli.github.com"
+# ---------- 1. gates (nothing is modified until all of these pass) ----------
+for tool in git gh node pnpm curl tar zip unzip sha256sum; do
+  command -v "$tool" >/dev/null || die "'$tool' is required — on Debian/Ubuntu: sudo apt install -y $tool"
+done
 gh auth status >/dev/null 2>&1 || die "gh isn't logged in — run: gh auth login"
 [ -z "$(git status --porcelain)" ] || die "working tree isn't clean — commit or stash first"
 git rev-parse "$TAG" >/dev/null 2>&1 && die "tag $TAG already exists"
@@ -54,8 +58,8 @@ node -e "
   c.version = '$VERSION';
   fs.writeFileSync(f, JSON.stringify(c, null, 2) + '\n');
 " 2>/dev/null || true
-git add -A && git commit -m "Release $TAG"
-git tag "$TAG"
+# NOTE: no commit/tag yet — that happens only after every build succeeds,
+# so a failed build leaves nothing to clean up beyond `git checkout .`
 
 # ---------- 3. server bundles ----------
 rm -rf release apps/web/dist
@@ -80,8 +84,12 @@ else
   say "docker not found — skipping the container image"
 fi
 
-# ---------- 5. checksums, push, release ----------
+# ---------- 5. checksums, commit + tag, push, release ----------
 (cd release && sha256sum ./* > SHA256SUMS.txt)
+
+say "committing the version stamp + tagging $TAG"
+git add -A && git commit -m "Release $TAG"
+git tag "$TAG"
 
 say "pushing branch + tag (this kicks off the desktop/Android builds in CI)"
 git push origin HEAD
