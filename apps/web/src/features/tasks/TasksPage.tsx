@@ -43,7 +43,7 @@ export function TasksPage({ me }: { me: Extract<Me, { kind: "member" }> }) {
   return (
     <div className="space-y-3">
       <div className="flex items-center justify-between">
-        <h2 className="text-xl font-extrabold">Today's chores & to-dos</h2>
+        <h2 className="text-xl font-extrabold">Chores</h2>
         {isParent && (
           <button type="button" className={`${primaryBtn} flex items-center gap-1`} onClick={() => setEditing("new")}>
             <Plus size={18} /> Chore
@@ -53,8 +53,8 @@ export function TasksPage({ me }: { me: Extract<Me, { kind: "member" }> }) {
 
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
         {columns.map(({ member, tasks: columnTasks }) => (
-          <div key={member?.id ?? "unassigned"} className="rounded-card bg-card p-3 shadow-card">
-            <div className="mb-2 flex items-center gap-2">
+          <div key={member?.id ?? "unassigned"} className="rounded-card bg-card shadow-card">
+            <div className="flex items-center gap-2 border-b border-line px-3 py-2">
               {member ? (
                 <>
                   <Avatar member={member} size="sm" />
@@ -74,15 +74,13 @@ export function TasksPage({ me }: { me: Extract<Me, { kind: "member" }> }) {
                 {columnTasks.filter((t) => t.completed).length}/{columnTasks.length}
               </span>
             </div>
-            <div className="space-y-1.5">
+            <div className="divide-y divide-line">
               {columnTasks.length === 0 && (
-                <p className="rounded-xl bg-cream px-3 py-4 text-center text-sm font-semibold text-ink-soft">
-                  All clear! 🎉
-                </p>
+                <p className="px-3 py-4 text-center text-sm font-semibold text-ink-soft">All clear</p>
               )}
               {columnTasks.map((task) => (
                 <div key={task.id}
-                  className={`flex items-center gap-2 rounded-xl border-2 border-line px-2 py-2 transition ${task.completed ? "opacity-50" : ""}`}>
+                  className={`flex items-center gap-2 px-3 py-2.5 transition ${task.completed ? "opacity-50" : ""}`}>
                   {task.steps.length > 0 ? (
                     /* Multi-part chores green up only through their steps —
                        this circle just reports progress. */
@@ -107,7 +105,7 @@ export function TasksPage({ me }: { me: Extract<Me, { kind: "member" }> }) {
                   <div className="min-w-0 flex-1">
                     <p className={`truncate text-sm font-bold ${task.completed ? "line-through" : ""}`}>{task.title}</p>
                     {task.steps.length > 0 && (
-                      <div className="mt-0.5 space-y-0.5">
+                      <div className="mt-1 space-y-0.5 border-l-2 border-line pl-2">
                         {task.steps.map((step, i) => {
                           const stepDone = task.stepsDone.includes(i);
                           const stepOwner = step.assigneeId ? memberById.get(step.assigneeId) : null;

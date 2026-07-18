@@ -37,22 +37,19 @@ export function Shell({ me }: { me: Extract<Me, { kind: "member" }> }) {
 
   return (
     <div className="shell-frame mx-auto flex min-h-dvh max-w-7xl flex-col">
-      <header className="flex items-center justify-between px-4 pb-2 pt-4 sm:px-6">
-        <div className="flex items-center gap-2">
+      <header className="flex items-center justify-between gap-3 border-b border-line px-4 pb-3 pt-4 sm:px-6">
+        <div className="flex min-w-0 items-center gap-2">
           <span className="text-2xl">🏡</span>
-          <div>
-            <h1 className="text-lg font-extrabold leading-tight">{me.household.name}</h1>
-            <p className="text-xs font-semibold text-ink-soft">Hi, {me.member.name}!</p>
-          </div>
+          <h1 className="truncate text-lg font-extrabold leading-tight">{me.household.name}</h1>
         </div>
-        <nav className="hidden gap-1 sm:flex">
+        <nav className="hidden gap-5 sm:flex">
           {tabs.map(({ to, label, icon: Icon }) => (
             <NavLink
               key={to}
               to={to}
               className={({ isActive }) =>
-                `flex items-center gap-1.5 rounded-xl px-3 py-2 text-sm font-bold transition ${
-                  isActive ? "bg-coral text-white shadow-card" : "text-ink-soft hover:bg-line"
+                `-mb-3 flex items-center gap-1.5 border-b-2 px-0.5 pb-3 text-sm font-bold transition ${
+                  isActive ? "border-sky text-ink" : "border-transparent text-ink-soft hover:text-ink"
                 }`
               }
             >
@@ -82,6 +79,20 @@ export function Shell({ me }: { me: Extract<Me, { kind: "member" }> }) {
                   <p className="text-[11px] font-bold capitalize text-ink-soft">{me.member.role}</p>
                 </div>
               </div>
+              {/* On phones the bottom bar keeps only the daily four — the
+                  rest lives here instead of crowding the thumb row. */}
+              {me.member.role !== "child" && (
+                <div className="sm:hidden">
+                  <NavLink to="/history" onClick={() => setMenuOpen(false)}
+                    className="flex w-full items-center gap-2 rounded-xl px-2.5 py-2 text-sm font-bold hover:bg-cream">
+                    <History size={16} className="text-ink-soft" /> History
+                  </NavLink>
+                  <NavLink to="/settings" onClick={() => setMenuOpen(false)}
+                    className="flex w-full items-center gap-2 rounded-xl px-2.5 py-2 text-sm font-bold hover:bg-cream">
+                    <Settings size={16} className="text-ink-soft" /> Settings
+                  </NavLink>
+                </div>
+              )}
               <button type="button" role="menuitem"
                 onClick={() => { setMenuOpen(false); setSwitching(true); }}
                 className="flex w-full items-center gap-2 rounded-xl px-2.5 py-2 text-sm font-bold hover:bg-cream">
@@ -103,15 +114,15 @@ export function Shell({ me }: { me: Extract<Me, { kind: "member" }> }) {
         <Outlet />
       </main>
 
-      {/* Mobile bottom nav — big, thumb-friendly targets */}
-      <nav className="fixed inset-x-0 bottom-0 z-30 flex justify-around border-t-2 border-line bg-card/95 px-2 py-1.5 backdrop-blur sm:hidden">
-        {tabs.map(({ to, label, icon: Icon }) => (
+      {/* Mobile bottom nav — the daily four only; the rest is in the avatar menu */}
+      <nav className="fixed inset-x-0 bottom-0 z-30 flex justify-around border-t border-line bg-card/95 px-2 py-1.5 backdrop-blur sm:hidden">
+        {tabs.slice(0, 4).map(({ to, label, icon: Icon }) => (
           <NavLink
             key={to}
             to={to}
             className={({ isActive }) =>
               `flex flex-col items-center gap-0.5 rounded-xl px-3 py-1.5 text-[11px] font-bold ${
-                isActive ? "text-coral" : "text-ink-soft"
+                isActive ? "text-sky" : "text-ink-soft"
               }`
             }
           >

@@ -45,7 +45,7 @@ export function PointsPage({ me }: { me: Extract<Me, { kind: "member" }> }) {
           <Avatar member={me.member} size="lg" />
           <div>
             <p className="text-3xl font-extrabold text-sun">★ {myTotal}</p>
-            <p className="text-sm font-bold text-ink-soft">your points, all time</p>
+            <p className="text-sm font-bold text-ink-soft">all time</p>
           </div>
         </div>
         <div className="flex flex-wrap gap-2">
@@ -64,10 +64,8 @@ export function PointsPage({ me }: { me: Extract<Me, { kind: "member" }> }) {
       {/* goals */}
       {data.goals.length === 0 && (
         <section className="rounded-card bg-card p-6 text-center shadow-card">
-          <p className="text-3xl">🏆</p>
-          <p className="mt-1 font-extrabold">No goals yet</p>
           <p className="text-sm font-semibold text-ink-soft">
-            {isParent ? "Set one up — “50 points by Saturday”, “first to 100”, monthly streaks…" : "Ask a parent to set one up!"}
+            {isParent ? "No goals yet." : "No goals yet — ask a parent."}
           </p>
         </section>
       )}
@@ -80,7 +78,7 @@ export function PointsPage({ me }: { me: Extract<Me, { kind: "member" }> }) {
       <section className="rounded-card bg-card p-4 shadow-card">
         <h3 className="mb-2 font-extrabold">Recent</h3>
         <div className="space-y-1">
-          {data.recent.length === 0 && <p className="text-sm font-semibold text-ink-soft">Nothing yet — go do a chore! 🧹</p>}
+          {data.recent.length === 0 && <p className="text-sm font-semibold text-ink-soft">Nothing yet.</p>}
           {data.recent.map((entry) => {
             const member = memberById.get(entry.memberId);
             return (
@@ -151,12 +149,12 @@ function GoalCard({ goal, windowEnd, standings, memberById, isParent, onEdit }: 
           return (
             <div key={standing.memberId} className="flex items-center gap-2">
               <Avatar member={member} size="sm" />
-              <div className="relative h-6 flex-1 overflow-hidden rounded-full bg-cream">
+              <div className="relative h-6 flex-1 overflow-hidden rounded-[3px] bg-cream">
                 {/* milestone ticks at quarters */}
                 {[25, 50, 75].map((tick) => (
                   <span key={tick} className="absolute top-0 h-full w-px bg-line" style={{ left: `${tick}%` }} />
                 ))}
-                <span className={`absolute inset-y-0 left-0 rounded-full transition-all ${standing.reached ? "bg-leaf" : "bg-sun"}`}
+                <span className={`absolute inset-y-0 left-0 transition-all ${standing.reached ? "bg-leaf" : "bg-sun"}`}
                   style={{ width: `${pct}%`, backgroundColor: standing.reached ? undefined : member.color }} />
                 <span className="absolute inset-0 flex items-center justify-end pr-2 text-[11px] font-extrabold text-ink">
                   {standing.earned}/{goal.target}

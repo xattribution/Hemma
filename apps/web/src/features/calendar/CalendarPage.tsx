@@ -5,7 +5,7 @@ import type { EventInstance } from "@coord/shared";
 import { useEventsRange, useMembers } from "../../api/queries";
 import { PluginSlot } from "../../plugins/registry";
 import { FullscreenButton } from "../../components/FullscreenButton";
-import { ghostBtn, primaryBtn } from "../../components/Modal";
+import { primaryBtn } from "../../components/Modal";
 import {
   fromParam, stepAnchor, toParam, viewRange, viewTitle, weekDays, type CalView,
 } from "./dates";
@@ -35,34 +35,42 @@ export function CalendarPage() {
 
   return (
     <div className="space-y-3">
-      <div className="flex flex-wrap items-center gap-2">
-        <h2 className="mr-auto text-xl font-extrabold">{viewTitle(view, anchor)}</h2>
-        <PluginSlot slot="calendar.toolbar" />
-        <FullscreenButton />
-        <div className="flex rounded-xl bg-card p-0.5 shadow-card">
-          {(["month", "week", "day"] as const).map((v) => (
-            <button key={v} type="button" onClick={() => go(v, anchor)}
-              className={`rounded-lg px-3 py-1.5 text-sm font-bold capitalize transition ${
-                view === v ? "bg-coral text-white" : "text-ink-soft hover:text-ink"
-              }`}>
-              {v}
-            </button>
-          ))}
-        </div>
-        <div className="flex items-center gap-1">
-          <button type="button" className={ghostBtn} onClick={() => go(view, stepAnchor(view, anchor, -1))} aria-label="Previous">
-            <ChevronLeft size={18} />
+      {/* One toolbar, grouped by function: where am I (title + date nav) on
+          the left; how I'm looking (views) and what I can do (add) on the
+          right. Wraps to two tidy rows on phones. */}
+      <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
+        <h2 className="text-xl font-extrabold">{viewTitle(view, anchor)}</h2>
+        <div className="flex items-center rounded-lg bg-card shadow-card">
+          <button type="button" onClick={() => go(view, stepAnchor(view, anchor, -1))} aria-label="Previous" title="Previous"
+            className="px-2 py-1.5 text-ink-soft transition hover:text-ink">
+            <ChevronLeft size={17} />
           </button>
-          <button type="button" className={ghostBtn} onClick={() => go(view, new Date())}>
+          <button type="button" onClick={() => go(view, new Date())} title="Jump to today"
+            className="border-x border-line px-3 py-1.5 text-sm font-bold text-ink-soft transition hover:text-ink">
             Today
           </button>
-          <button type="button" className={ghostBtn} onClick={() => go(view, stepAnchor(view, anchor, 1))} aria-label="Next">
-            <ChevronRight size={18} />
+          <button type="button" onClick={() => go(view, stepAnchor(view, anchor, 1))} aria-label="Next" title="Next"
+            className="px-2 py-1.5 text-ink-soft transition hover:text-ink">
+            <ChevronRight size={17} />
           </button>
         </div>
-        <button type="button" className={`${primaryBtn} flex items-center gap-1`} onClick={() => setModal({ kind: "create", start: defaultStart(anchor) })}>
-          <Plus size={18} /> Event
-        </button>
+        <div className="ml-auto flex items-center gap-2">
+          <PluginSlot slot="calendar.toolbar" />
+          <div className="flex rounded-lg bg-card shadow-card">
+            {(["month", "week", "day"] as const).map((v, i) => (
+              <button key={v} type="button" onClick={() => go(v, anchor)}
+                className={`px-3 py-1.5 text-sm font-bold capitalize transition ${i > 0 ? "border-l border-line" : ""} ${
+                  view === v ? "bg-sky text-white" : "text-ink-soft hover:text-ink"
+                } ${i === 0 ? "rounded-l-lg" : ""} ${i === 2 ? "rounded-r-lg" : ""}`}>
+                {v}
+              </button>
+            ))}
+          </div>
+          <FullscreenButton />
+          <button type="button" className={`${primaryBtn} flex items-center gap-1`} onClick={() => setModal({ kind: "create", start: defaultStart(anchor) })}>
+            <Plus size={18} /> Event
+          </button>
+        </div>
       </div>
 
       {view === "month" ? (

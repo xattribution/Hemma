@@ -46,7 +46,7 @@ export function PatternPad({ onComplete, resetKey }: { onComplete: (encoded: str
       <div className="grid grid-cols-3 gap-2">
         {PATTERN_ANIMALS.map((animal, index) => (
           <button key={index} type="button" onClick={() => tap(index)}
-            className="flex h-16 w-16 items-center justify-center rounded-2xl bg-cream text-3xl shadow-card transition active:scale-90">
+            className="flex h-16 w-16 items-center justify-center rounded-[1.25rem] bg-cream text-3xl shadow-card transition active:scale-90">
             {animal}
           </button>
         ))}

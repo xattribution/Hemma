@@ -52,7 +52,7 @@ export function KidApp({ me }: { me: Extract<Me, { kind: "member" }> }) {
         <div className="mx-auto flex max-w-3xl justify-around gap-2 px-3 py-2">
           {TABS.map(({ key, emoji, label }) => (
             <button key={key} type="button" onClick={() => setTab(key)}
-              className={`flex flex-1 flex-col items-center gap-0.5 rounded-2xl py-2.5 transition active:scale-95 ${
+              className={`flex flex-1 flex-col items-center gap-0.5 rounded-[1.25rem] py-2.5 transition active:scale-95 ${
                 tab === key ? "bg-coral-soft" : ""
               }`}>
               <span className="text-3xl">{emoji}</span>
@@ -120,7 +120,7 @@ function KidJobCard({ task, meId, memberById, onCheck, onStep }: {
 }) {
   const hasSteps = task.steps.length > 0;
   return (
-    <div className={`rounded-3xl border-4 p-5 shadow-card transition ${
+    <div className={`rounded-[1.75rem] border-4 p-5 shadow-card transition ${
       task.completed ? "border-leaf bg-leaf/10" : "border-line bg-card"
     }`}>
       <div className="flex items-center gap-4">
@@ -159,7 +159,7 @@ function KidJobCard({ task, meId, memberById, onCheck, onStep }: {
               const lockedForMe = !!step.assigneeId && step.assigneeId !== meId;
               return (
                 <button key={i} type="button" onClick={() => onStep(i)} disabled={lockedForMe}
-                  className={`flex w-full items-center gap-3 rounded-2xl border-2 px-4 py-3 text-left transition ${
+                  className={`flex w-full items-center gap-3 rounded-[1.25rem] border-2 px-4 py-3 text-left transition ${
                     done ? "border-leaf bg-leaf/10" : "border-line bg-cream"
                   } ${lockedForMe ? "opacity-45" : "active:scale-[0.98]"}`}>
                   <span className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full border-2 text-xl ${
@@ -190,7 +190,7 @@ function KidStars({ me }: { me: Extract<Me, { kind: "member" }> }) {
 
   return (
     <div className="space-y-5">
-      <div className="rounded-3xl bg-card p-6 text-center shadow-card">
+      <div className="rounded-[1.75rem] bg-card p-6 text-center shadow-card">
         <p className="text-6xl">⭐</p>
         <p className="text-5xl font-extrabold text-sun">{total}</p>
         <p className="text-xl font-extrabold text-ink-soft">your stars</p>
@@ -201,7 +201,7 @@ function KidStars({ me }: { me: Extract<Me, { kind: "member" }> }) {
         if (!mine) return null;
         const pct = Math.max(0, Math.min(mine.earned, goal.target)) / goal.target * 100;
         return (
-          <div key={goal.id} className="rounded-3xl bg-card p-5 shadow-card">
+          <div key={goal.id} className="rounded-[1.75rem] bg-card p-5 shadow-card">
             <p className="mb-2 text-2xl font-extrabold">{goal.icon} {goal.title}</p>
             <div className="relative h-10 overflow-hidden rounded-full bg-cream">
               <span className={`absolute inset-y-0 left-0 rounded-full ${mine.reached ? "bg-leaf" : "bg-sun"}`}
@@ -219,7 +219,7 @@ function KidStars({ me }: { me: Extract<Me, { kind: "member" }> }) {
         );
       })}
 
-      <div className="rounded-3xl bg-card p-5 shadow-card">
+      <div className="rounded-[1.75rem] bg-card p-5 shadow-card">
         <p className="mb-2 text-xl font-extrabold">Lately</p>
         {data.recent.length === 0 && <p className="text-lg font-bold text-ink-soft">Do a job to earn stars!</p>}
         <div className="space-y-1.5">
@@ -259,7 +259,7 @@ function KidDays() {
               {emoji} {label} <span className="text-lg font-bold text-ink-soft">{format(date, "EEEE")}</span>
             </h2>
             {dayEvents.length === 0 ? (
-              <p className="rounded-3xl bg-card px-5 py-6 text-center text-xl font-bold text-ink-soft shadow-card">
+              <p className="rounded-[1.75rem] bg-card px-5 py-6 text-center text-xl font-bold text-ink-soft shadow-card">
                 Nothing planned!
               </p>
             ) : (
@@ -268,7 +268,7 @@ function KidDays() {
                   const cat = EVENT_CATEGORIES[instance.category];
                   return (
                     <div key={`${instance.id}:${instance.occurrenceStart}`}
-                      className="flex items-center gap-4 rounded-3xl bg-card p-4 shadow-card"
+                      className="flex items-center gap-4 rounded-[1.75rem] bg-card p-4 shadow-card"
                       style={{ borderLeft: `10px solid ${cat.color}` }}>
                       <span className="text-4xl">{cat.icon}</span>
                       <div className="min-w-0 flex-1">
@@ -308,7 +308,7 @@ function KidLists() {
   return (
     <div className="space-y-4">
       {visible.map((list) => (
-        <section key={list.id} className="rounded-3xl bg-card p-4 shadow-card">
+        <section key={list.id} className="rounded-[1.75rem] bg-card p-4 shadow-card">
           <h2 className="mb-2 flex items-center gap-2 text-2xl font-extrabold">
             <span className="text-3xl">{list.icon}</span> {list.title}
           </h2>
@@ -316,7 +316,7 @@ function KidLists() {
             {list.items.map((item: ChecklistItem) => (
               <button key={item.id} type="button"
                 onClick={() => toggleItem.mutate({ listId: list.id, itemId: item.id })}
-                className={`flex w-full items-center gap-3 rounded-2xl border-2 px-4 py-3 text-left transition active:scale-[0.98] ${
+                className={`flex w-full items-center gap-3 rounded-[1.25rem] border-2 px-4 py-3 text-left transition active:scale-[0.98] ${
                   item.checked ? "border-leaf bg-leaf/10" : "border-line bg-cream"
                 }`}>
                 <span className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full border-2 text-xl ${

@@ -2,6 +2,8 @@ import { useEffect, useRef, useState } from "react";
 
 const THEMES = [
   { id: "light", icon: "☀️", label: "Light" },
+  { id: "paper", icon: "📄", label: "Paper" },
+  { id: "earth", icon: "🌾", label: "Earth" },
   { id: "midnight", icon: "🌙", label: "Midnight" },
   { id: "forest", icon: "🌲", label: "Forest" },
   { id: "plum", icon: "🍇", label: "Plum" },

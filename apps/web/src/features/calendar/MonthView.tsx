@@ -46,7 +46,7 @@ export function MonthView({ anchor, instances, members, onDayClick, onEventClick
             >
               <span
                 className={`inline-flex h-6 w-6 items-center justify-center rounded-full text-xs font-extrabold ${
-                  isToday ? "bg-coral text-white" : ""
+                  isToday ? "bg-sky text-white" : ""
                 }`}
               >
                 {format(day, "d")}
@@ -59,19 +59,19 @@ export function MonthView({ anchor, instances, members, onDayClick, onEventClick
                       key={`${instance.id}:${instance.occurrenceStart}`}
                       type="button"
                       onClick={(e) => { e.stopPropagation(); onEventClick(instance); }}
-                      className="flex w-full items-center gap-1 truncate rounded-md px-1 py-0.5 text-left text-[10px] font-bold text-white sm:text-xs"
-                      style={{ backgroundColor: cat.color }}
-                      title={instance.title}
+                      className="flex w-full items-center gap-1 truncate rounded-[3px] bg-cream py-0.5 pl-1.5 pr-1 text-left text-[10px] font-bold text-ink hover:bg-line/60 sm:text-xs"
+                      style={{ borderLeft: `3px solid ${cat.color}` }}
+                      title={`${cat.label}: ${instance.title}`}
                     >
                       {!instance.allDay && (
-                        <span className="hidden shrink-0 opacity-80 sm:inline">{format(new Date(instance.occurrenceStart), "h:mm")}</span>
+                        <span className="hidden shrink-0 font-semibold text-ink-soft sm:inline">{format(new Date(instance.occurrenceStart), "h:mm")}</span>
                       )}
                       <span className="truncate">{instance.title}</span>
                       <span className="ml-auto hidden shrink-0 gap-0.5 sm:flex">
                         {instance.assigneeIds.slice(0, 3).map((id) => {
                           const member = memberById.get(id);
                           return member ? (
-                            <span key={id} className="h-2 w-2 rounded-full ring-1 ring-white/60" style={{ backgroundColor: member.color }} />
+                            <span key={id} className="h-2 w-2 rounded-full" style={{ backgroundColor: member.color }} />
                           ) : null;
                         })}
                       </span>
