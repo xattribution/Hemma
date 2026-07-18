@@ -82,3 +82,16 @@ Playwright-core scripts (executablePath `/opt/pw-browsers/chromium`)
 driving the dev server, screenshots per feature batch; e2e golden flows in
 `/e2e`. Gotchas: 403 (not 401) for unelevated display writes; scope modal
 clicks with `.animate-slide-up`; `text=SUN` matches "Sunscreen".
+
+## Brand & icon assets (v1.4)
+
+The mark is **Linked Dens** — two den arches interlocked on shared ground
+(home + the connection between homes). Sources live in `assets/`
+(brand/ icons/ kid/ app-icon/ preview/design-sheet.html). In-app:
+`components/SettMark.tsx` (theme-aware via CSS tokens — used in the
+header, login/setup, dashboard) and `components/icons.tsx` (the custom
+24px/2px-stroke set: currentColor + ONE rust accent per icon; wired into
+the nav tabs and the messages button; lucide remains for utility glyphs).
+PWA icons + favicon in `apps/web/public` and the Tauri icon set are
+rendered from the same SVGs (`tauri icon assets/app-icon/icon-512.png`).
+Icon rules: 24 grid, stroke 2, round caps, rx=2 rects, one rust accent.

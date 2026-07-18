@@ -15,6 +15,7 @@ import { HistoryPage } from "./features/history/HistoryPage";
 import { SettingsPage } from "./features/settings/SettingsPage";
 import { KidApp } from "./features/kid/KidApp";
 import { PointsPage } from "./features/points/PointsPage";
+import { SettMark } from "./components/SettMark";
 
 export function App() {
   const qc = useQueryClient();
@@ -45,7 +46,7 @@ export function App() {
   if (setup.isLoading || me.isLoading || deviceAuthPending) {
     return (
       <div className="flex min-h-dvh items-center justify-center text-5xl">
-        <span className="animate-pop">🦡</span>
+        <span className="animate-pop"><SettMark size={56} /></span>
       </div>
     );
   }

@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { NavLink, Outlet } from "react-router";
-import { CalendarDays, ClipboardList, History, Images, ListChecks, LogOut, MessageSquare, Settings, Star, UsersRound } from "lucide-react";
+import { Images, LogOut, UsersRound } from "lucide-react";
+import { IconCalendar, IconChores, IconHistory, IconLists, IconMessages, IconPoints, IconSettings } from "../components/icons";
+import { SettMark } from "../components/SettMark";
 import type { Me } from "@coord/shared";
 import { Avatar } from "../components/Avatar";
 import { SwitchPersonModal } from "../components/SwitchPersonModal";
@@ -10,12 +12,12 @@ import { MessagesPanel } from "../features/messages/MessagesPanel";
 import { useLogout, useThreads } from "../api/queries";
 
 const ALL_TABS = [
-  { to: "/calendar", label: "Calendar", icon: CalendarDays },
-  { to: "/chores", label: "Chores", icon: ClipboardList },
-  { to: "/lists", label: "Lists", icon: ListChecks },
-  { to: "/points", label: "Points", icon: Star },
-  { to: "/history", label: "History", icon: History },
-  { to: "/settings", label: "Settings", icon: Settings },
+  { to: "/calendar", label: "Calendar", icon: IconCalendar },
+  { to: "/chores", label: "Chores", icon: IconChores },
+  { to: "/lists", label: "Lists", icon: IconLists },
+  { to: "/points", label: "Points", icon: IconPoints },
+  { to: "/history", label: "History", icon: IconHistory },
+  { to: "/settings", label: "Settings", icon: IconSettings },
 ];
 // Kids get the essentials: calendar, chores, lists, points. History and
 // every setting (including their own sign-in) stays parent-controlled.
@@ -52,7 +54,7 @@ export function Shell({ me }: { me: Extract<Me, { kind: "member" }> }) {
     <div className="shell-frame mx-auto flex min-h-dvh max-w-7xl flex-col">
       <header className="flex items-center justify-between gap-3 border-b border-line px-4 pb-3 pt-4 sm:px-6">
         <div className="flex min-w-0 items-center gap-2">
-          <span className="text-2xl">🦡</span>
+          <SettMark size={30} />
           <h1 className="truncate text-lg font-extrabold leading-tight">{me.household.name}</h1>
         </div>
         <nav className="hidden gap-5 sm:flex">
@@ -79,7 +81,7 @@ export function Shell({ me }: { me: Extract<Me, { kind: "member" }> }) {
             aria-label={unread ? `Messages — ${unread} unread` : "Messages"}
             className="relative rounded-xl border-2 border-line bg-card p-2 text-ink-soft transition hover:border-coral hover:text-coral"
           >
-            <MessageSquare size={18} />
+            <IconMessages size={18} />
             {unread > 0 && (
               <span className="absolute -right-1.5 -top-1.5 flex h-5 min-w-5 items-center justify-center rounded-full bg-coral px-1 text-[10px] font-extrabold text-white">
                 {unread > 9 ? "9+" : unread}
@@ -114,11 +116,11 @@ export function Shell({ me }: { me: Extract<Me, { kind: "member" }> }) {
                 <div className="sm:hidden">
                   <NavLink to="/history" onClick={() => setMenuOpen(false)}
                     className="flex w-full items-center gap-2 rounded-xl px-2.5 py-2 text-sm font-bold hover:bg-cream">
-                    <History size={16} className="text-ink-soft" /> History
+                    <IconHistory size={16} className="text-ink-soft" /> History
                   </NavLink>
                   <NavLink to="/settings" onClick={() => setMenuOpen(false)}
                     className="flex w-full items-center gap-2 rounded-xl px-2.5 py-2 text-sm font-bold hover:bg-cream">
-                    <Settings size={16} className="text-ink-soft" /> Settings
+                    <IconSettings size={16} className="text-ink-soft" /> Settings
                   </NavLink>
                 </div>
               )}

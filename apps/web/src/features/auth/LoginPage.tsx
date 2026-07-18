@@ -6,6 +6,7 @@ import { Avatar } from "../../components/Avatar";
 import { inputCls, primaryBtn } from "../../components/Modal";
 import { PatternPad } from "../../components/PatternPad";
 import { showToast } from "../../components/Toast";
+import { SettMark } from "../../components/SettMark";
 
 export function LoginPage() {
   const { data } = useLoginMembers();
@@ -38,7 +39,7 @@ export function LoginPage() {
   return (
     <div className="mx-auto flex min-h-dvh max-w-lg flex-col items-center justify-center px-6 py-10">
       <div className="mb-8 text-center">
-        <div className="mb-2 text-6xl">🦡</div>
+        <div className="mb-3 flex justify-center"><SettMark size={72} /></div>
         <h1 className="text-3xl font-extrabold">Who's there?</h1>
       </div>
 

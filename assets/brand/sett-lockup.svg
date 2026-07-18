@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 700 220" width="700" height="220">
+  <g transform="translate(4 -8) scale(0.46)">
+    <path d="M130 330 v-92 a86 86 0 0 1 172 0 v20" fill="none" stroke="#2f2a25" stroke-width="46" stroke-linecap="round"/>
+    <path d="M382 196 v92 a86 86 0 0 1 -172 0 v-20" fill="none" stroke="#b0563a" stroke-width="46" stroke-linecap="round"/>
+    <path d="M130 330 v-92 a86 86 0 0 1 43 -74" fill="none" stroke="#2f2a25" stroke-width="46" stroke-linecap="round"/>
+  </g>
+  <text x="240" y="152" font-family="Nunito, 'Arial Rounded MT Bold', ui-rounded, system-ui, sans-serif"
+        font-size="124" font-weight="800" fill="#2f2a25" letter-spacing="-2">Sett<tspan fill="#b0563a">.</tspan></text>
+</svg>

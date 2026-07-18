@@ -3,6 +3,7 @@ import { AVATARS, MEMBER_COLORS } from "@coord/shared";
 import { deviceTimezone, useSetup } from "../../api/queries";
 import { inputCls, labelCls, primaryBtn } from "../../components/Modal";
 import { showToast } from "../../components/Toast";
+import { SettMark } from "../../components/SettMark";
 
 export function SetupPage() {
   const setup = useSetup();
@@ -27,7 +28,7 @@ export function SetupPage() {
   return (
     <div className="mx-auto flex min-h-dvh max-w-md flex-col justify-center px-6 py-10">
       <div className="mb-8 text-center">
-        <div className="mb-2 text-6xl">🦡</div>
+        <div className="mb-3 flex justify-center"><SettMark size={72} /></div>
         <h1 className="text-3xl font-extrabold">Welcome to Sett!</h1>
         <p className="mt-1 font-semibold text-ink-soft">Let's set up your family's home base.</p>
       </div>

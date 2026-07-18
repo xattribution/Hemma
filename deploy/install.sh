@@ -26,7 +26,7 @@ ask()   { # ask "question" "default" -> REPLY  (reads /dev/tty so `curl | bash` 
 }
 lan_ip() { hostname -I 2>/dev/null | awk '{print $1}' || echo "<this machine's IP>"; }
 
-bold "🦡 Sett setup"
+bold "Sett setup"
 say  "A few questions and your family server is running. Press ENTER to accept"
 say  "the suggestion in [brackets]. Nothing leaves this machine."
 echo

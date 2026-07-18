@@ -1,0 +1,232 @@
+<!doctype html><html><head><meta charset="utf-8"><style>
+  * { box-sizing: border-box; margin: 0; }
+  body { font-family: Nunito, "Arial Rounded MT Bold", ui-rounded, system-ui, sans-serif; background:#f9f5ec; color:#2f2a25; padding:40px; width:1240px; }
+  h1 { font-size:26px; margin-bottom:4px; } h2 { font-size:15px; text-transform:uppercase; letter-spacing:.12em; color:#75695e; margin:36px 0 12px; border-bottom:1px solid #e6ddce; padding-bottom:6px;}
+  p.sub { color:#75695e; font-weight:600; font-size:14px; }
+  .row { display:flex; gap:20px; align-items:center; flex-wrap:wrap; }
+  .tile { background:#fffdf9; border:1px solid #e6ddce; border-radius:6px; padding:18px; display:flex; align-items:center; justify-content:center; }
+  .tile.dark { background:#2f2a25; } .tile.rust { background:#b0563a; } .tile.cream { background:#f3e4dc; }
+  .grid { display:grid; grid-template-columns:repeat(9,1fr); gap:10px; }
+  .cell { background:#fffdf9; border:1px solid #e6ddce; border-radius:6px; padding:12px 6px; display:flex; flex-direction:column; align-items:center; gap:8px; }
+  .cell label { font-size:10px; font-weight:700; color:#75695e; }
+  .ic { color:#2f2a25; display:inline-flex; }
+  .chip { width:84px; height:64px; border-radius:6px; border:1px solid #e6ddce; display:flex; align-items:flex-end; padding:5px; font-size:10px; font-weight:800; color:#fff; }
+  .navmock { background:#fffdf9; border:1px solid #e6ddce; border-radius:6px; padding:14px 22px; display:flex; gap:28px; align-items:center; }
+  .navmock .item { display:flex; gap:7px; align-items:center; font-weight:700; font-size:14px; color:#75695e; padding-bottom:8px; border-bottom:2.5px solid transparent; }
+  .navmock .item .ic { color:#75695e; } .navmock .active { color:#2f2a25; border-color:#3e5f7d; } .navmock .active .ic { color:#2f2a25; }
+  .kidrow { display:flex; gap:22px; background:#fffdf9; border:1px solid #e6ddce; border-radius:6px; padding:18px 24px; align-items:center;}
+  .kidrow div { display:flex; flex-direction:column; align-items:center; gap:6px; font-weight:800; font-size:13px; }
+</style></head><body>
+  <h1>Sett — brand & icon system</h1>
+  <p class="sub">The mark: two den arches linked on shared ground — home, and the connection between homes. Squared structure, soft strokes (2px, round caps), ink + one rust accent per icon — the same color-role rules as the app.</p>
+
+  <h2>The mark</h2>
+  <div class="row">
+    <div class="tile"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="150" height="150">
+  <rect x="16" y="16" width="480" height="480" rx="104" fill="#f9f5ec"/>
+  <rect x="16" y="16" width="480" height="480" rx="104" fill="none" stroke="#e6ddce" stroke-width="6"/>
+  <path d="M130 330 v-92 a86 86 0 0 1 172 0 v20" fill="none" stroke="#2f2a25" stroke-width="46" stroke-linecap="round"/>
+  <path d="M382 196 v92 a86 86 0 0 1 -172 0 v-20" fill="none" stroke="#b0563a" stroke-width="46" stroke-linecap="round"/>
+  <path d="M130 330 v-92 a86 86 0 0 1 43 -74" fill="none" stroke="#2f2a25" stroke-width="46" stroke-linecap="round"/>
+</svg>
+</div>
+    <div class="tile cream"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="130" height="130">
+  <path d="M130 330 v-92 a86 86 0 0 1 172 0 v20" fill="none" stroke="#2f2a25" stroke-width="46" stroke-linecap="round"/>
+  <path d="M382 196 v92 a86 86 0 0 1 -172 0 v-20" fill="none" stroke="#b0563a" stroke-width="46" stroke-linecap="round"/>
+  <path d="M130 330 v-92 a86 86 0 0 1 43 -74" fill="none" stroke="#2f2a25" stroke-width="46" stroke-linecap="round"/>
+</svg>
+</div>
+    <div class="tile dark"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="130" height="130">
+  <path d="M130 330 v-92 a86 86 0 0 1 172 0 v20" fill="none" stroke="#2f2a25" stroke-width="46" stroke-linecap="round"/>
+  <path d="M382 196 v92 a86 86 0 0 1 -172 0 v-20" fill="none" stroke="#b0563a" stroke-width="46" stroke-linecap="round"/>
+  <path d="M130 330 v-92 a86 86 0 0 1 43 -74" fill="none" stroke="#2f2a25" stroke-width="46" stroke-linecap="round"/>
+</svg>
+</div>
+    <div class="tile" style="padding:8px 26px"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 700 220" width="700" height="220">
+  <g transform="translate(4 -8) scale(0.46)">
+    <path d="M130 330 v-92 a86 86 0 0 1 172 0 v20" fill="none" stroke="#2f2a25" stroke-width="46" stroke-linecap="round"/>
+    <path d="M382 196 v92 a86 86 0 0 1 -172 0 v-20" fill="none" stroke="#b0563a" stroke-width="46" stroke-linecap="round"/>
+    <path d="M130 330 v-92 a86 86 0 0 1 43 -74" fill="none" stroke="#2f2a25" stroke-width="46" stroke-linecap="round"/>
+  </g>
+  <text x="240" y="152" font-family="Nunito, 'Arial Rounded MT Bold', ui-rounded, system-ui, sans-serif"
+        font-size="124" font-weight="800" fill="#2f2a25" letter-spacing="-2">Sett<tspan fill="#b0563a">.</tspan></text>
+</svg>
+</div>
+    <div class="tile" style="background:#f9f5ec"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="120" height="120">
+  <rect rx="256" width="512" height="512" fill="#f9f5ec"/>
+  <g transform="translate(256 256) scale(0.74) translate(-256 -263)">
+    <path d="M130 330 v-92 a86 86 0 0 1 172 0 v20" fill="none" stroke="#2f2a25" stroke-width="46" stroke-linecap="round"/>
+    <path d="M382 196 v92 a86 86 0 0 1 -172 0 v-20" fill="none" stroke="#b0563a" stroke-width="46" stroke-linecap="round"/>
+    <path d="M130 330 v-92 a86 86 0 0 1 43 -74" fill="none" stroke="#2f2a25" stroke-width="46" stroke-linecap="round"/>
+  </g>
+</svg>
+<span style="font-size:10px;color:#75695e;font-weight:700;margin-left:8px">maskable<br>(round crop)</span></div>
+  </div>
+
+  <h2>Palette (the app's own tokens)</h2>
+  <div class="row">
+    <div class="chip" style="background:#2f2a25">ink</div><div class="chip" style="background:#b0563a">rust · action</div>
+    <div class="chip" style="background:#3e5f7d">sky · selection</div><div class="chip" style="background:#63925a">leaf · done</div>
+    <div class="chip" style="background:#c08a2d">sun · points</div><div class="chip" style="background:#f9f5ec;color:#75695e">cream</div>
+    <div class="chip" style="background:#fffdf9;color:#75695e">card</div><div class="chip" style="background:#f3e4dc;color:#75695e">rust-soft</div>
+  </div>
+
+  <h2>Icon set — 24px, 2px stroke, one rust accent</h2>
+  <div class="grid"><div class="cell"><span class="ic" style="width:30px;height:30px"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="30" height="30" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+  <path d="M3 20.5h18"/>
+  <path d="M4.5 20.5v-8a7.5 7.5 0 0 1 15 0v8"/>
+  <path class="accent" stroke="#b0563a" d="M9.7 20.5v-3.3a2.3 2.3 0 0 1 4.6 0v3.3"/>
+</svg>
+</span><label>den</label></div><div class="cell"><span class="ic" style="width:30px;height:30px"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="30" height="30" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+  <rect x="3.5" y="5" width="17" height="15.5" rx="2"/>
+  <path d="M8 3v4M16 3v4M3.5 9.5h17"/>
+  <circle class="accent" cx="12" cy="15" r="1.6" fill="#b0563a" stroke="none"/>
+</svg>
+</span><label>calendar</label></div><div class="cell"><span class="ic" style="width:30px;height:30px"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="30" height="30" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+  <rect x="4.5" y="4.5" width="15" height="16.5" rx="2"/>
+  <rect x="9" y="2.5" width="6" height="4" rx="1.2"/>
+  <path class="accent" stroke="#b0563a" d="m8.6 13.6 2.3 2.3 4.6-4.9"/>
+</svg>
+</span><label>chores</label></div><div class="cell"><span class="ic" style="width:30px;height:30px"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="30" height="30" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+  <rect x="4" y="4.5" width="4.6" height="4.6" rx="1.2"/>
+  <rect x="4" y="14.5" width="4.6" height="4.6" rx="1.2"/>
+  <path d="M12.5 6.8H20M12.5 16.8H20"/>
+  <path class="accent" stroke="#b0563a" d="m5.2 6.9 1.1 1.1 2-2.2"/>
+</svg>
+</span><label>lists</label></div><div class="cell"><span class="ic" style="width:30px;height:30px"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="30" height="30" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+  <path d="m12 3.8 2.5 5 5.5.8-4 3.9.9 5.5-4.9-2.6-4.9 2.6.9-5.5-4-3.9 5.5-.8z"/>
+</svg>
+</span><label>points</label></div><div class="cell"><span class="ic" style="width:30px;height:30px"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="30" height="30" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+  <path d="M4.9 7.6a8 8 0 1 1-.7 5.9"/>
+  <path d="M4.9 3.6v4h4"/>
+  <path class="accent" stroke="#b0563a" d="M12 9v4l2.7 1.6"/>
+</svg>
+</span><label>history</label></div><div class="cell"><span class="ic" style="width:30px;height:30px"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="30" height="30" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+  <circle cx="12" cy="12" r="6.2"/>
+  <circle cx="12" cy="12" r="2.4"/>
+  <path d="M12 3v2.8M12 18.2V21M3 12h2.8M18.2 12H21M5.6 5.6l2 2M16.4 16.4l2 2M18.4 5.6l-2 2M7.6 16.4l-2 2"/>
+</svg>
+</span><label>settings</label></div><div class="cell"><span class="ic" style="width:30px;height:30px"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="30" height="30" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+  <path d="M4 7a2.5 2.5 0 0 1 2.5-2.5h11A2.5 2.5 0 0 1 20 7v6.5a2.5 2.5 0 0 1-2.5 2.5H10l-4 3.5V16h-.5A2.5 2.5 0 0 1 3 13.5"/>
+  <g class="accent" fill="#b0563a" stroke="none">
+    <circle cx="8.8" cy="10.3" r="1.2"/><circle cx="12.4" cy="10.3" r="1.2"/><circle cx="16" cy="10.3" r="1.2"/>
+  </g>
+</svg>
+</span><label>messages</label></div><div class="cell"><span class="ic" style="width:30px;height:30px"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="30" height="30" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+  <rect x="3.5" y="4.5" width="17" height="15" rx="2"/>
+  <circle class="accent" cx="9" cy="9.8" r="1.7" fill="#b0563a" stroke="none"/>
+  <path d="m3.5 17.2 5-4.5 4 3.5 3.5-3 4.5 4"/>
+</svg>
+</span><label>photos</label></div><div class="cell"><span class="ic" style="width:30px;height:30px"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="30" height="30" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+  <rect x="3" y="4.5" width="18" height="12.5" rx="2"/>
+  <path d="M9.5 21h5M12 17v4"/>
+  <path class="accent" stroke="#b0563a" d="M9.8 14v-2.2a2.2 2.2 0 0 1 4.4 0V14"/>
+</svg>
+</span><label>display</label></div><div class="cell"><span class="ic" style="width:30px;height:30px"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="30" height="30" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+  <circle cx="9" cy="7.8" r="3.2"/>
+  <path d="M3.5 20c0-3.6 2.4-5.8 5.5-5.8s5.5 2.2 5.5 5.8"/>
+  <circle cx="17.5" cy="10" r="2.4"/>
+  <path d="M15.6 20c.3-2.6 1.5-4.1 3-4.1 2 0 3.3 1.7 3.4 4.1"/>
+</svg>
+</span><label>family</label></div><div class="cell"><span class="ic" style="width:30px;height:30px"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="30" height="30" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+  <path d="M3 18.5h18"/>
+  <path d="M4.5 18.5v-4.7a3.9 3.9 0 0 1 7.8 0v4.7"/>
+  <path class="accent" stroke="#b0563a" d="M11.7 18.5v-4.7a3.9 3.9 0 0 1 7.8 0v4.7"/>
+</svg>
+</span><label>connect</label></div><div class="cell"><span class="ic" style="width:30px;height:30px"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="30" height="30" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+  <rect x="3.5" y="4" width="17" height="4.5" rx="1.5"/>
+  <path d="M5.5 8.5v8a3 3 0 0 0 3 3h7a3 3 0 0 0 3-3v-8"/>
+  <path class="accent" stroke="#b0563a" d="M12 11.5V17M9.6 14.8 12 17.2l2.4-2.4"/>
+</svg>
+</span><label>backup</label></div><div class="cell"><span class="ic" style="width:30px;height:30px"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="30" height="30" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+  <path d="M9.5 5a2 2 0 0 1 4 0v1h3.5a2 2 0 0 1 2 2v3h-1a2 2 0 0 0 0 4h1v3a2 2 0 0 1-2 2h-3.5v-1a2 2 0 0 0-4 0v1H6.5a2 2 0 0 1-2-2v-3.5h1a2 2 0 0 0 0-4h-1V8a2 2 0 0 1 2-2H9.5z"/>
+</svg>
+</span><label>plugin</label></div><div class="cell"><span class="ic" style="width:30px;height:30px"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="30" height="30" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+  <path d="M3.5 7a2 2 0 0 1 2-2h4l2 2.5h7a2 2 0 0 1 2 2V17a2 2 0 0 1-2 2h-13a2 2 0 0 1-2-2z"/>
+  <path class="accent" stroke="#b0563a" d="M9.6 19v-2.8a2.4 2.4 0 0 1 4.8 0V19"/>
+</svg>
+</span><label>folder-den</label></div><div class="cell"><span class="ic" style="width:30px;height:30px"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="30" height="30" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+  <rect x="3.5" y="4" width="17" height="13" rx="2"/>
+  <path class="accent" d="m10.2 7.8 5 2.7-5 2.7z" fill="#b0563a" stroke="none"/>
+  <path d="M9.5 21h5"/>
+</svg>
+</span><label>slideshow</label></div><div class="cell"><span class="ic" style="width:30px;height:30px"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="30" height="30" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+  <path d="M4.5 13.5v4.5a2 2 0 0 0 2 2h11a2 2 0 0 0 2-2v-4.5"/>
+  <path class="accent" stroke="#b0563a" d="M12 14V4M8.5 7.5 12 4l3.5 3.5"/>
+</svg>
+</span><label>share</label></div><div class="cell"><span class="ic" style="width:30px;height:30px"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="30" height="30" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+  <path d="M12 5v14M5 12h14"/>
+</svg>
+</span><label>plus</label></div></div>
+
+  <h2>In context — the header nav</h2>
+  <div class="navmock">
+    <span class="item active"><span class="ic"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+  <rect x="3.5" y="5" width="17" height="15.5" rx="2"/>
+  <path d="M8 3v4M16 3v4M3.5 9.5h17"/>
+  <circle class="accent" cx="12" cy="15" r="1.6" fill="#b0563a" stroke="none"/>
+</svg>
+</span>Calendar</span><span class="item "><span class="ic"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+  <rect x="4.5" y="4.5" width="15" height="16.5" rx="2"/>
+  <rect x="9" y="2.5" width="6" height="4" rx="1.2"/>
+  <path class="accent" stroke="#b0563a" d="m8.6 13.6 2.3 2.3 4.6-4.9"/>
+</svg>
+</span>Chores</span><span class="item "><span class="ic"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+  <rect x="4" y="4.5" width="4.6" height="4.6" rx="1.2"/>
+  <rect x="4" y="14.5" width="4.6" height="4.6" rx="1.2"/>
+  <path d="M12.5 6.8H20M12.5 16.8H20"/>
+  <path class="accent" stroke="#b0563a" d="m5.2 6.9 1.1 1.1 2-2.2"/>
+</svg>
+</span>Lists</span><span class="item "><span class="ic"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+  <path d="m12 3.8 2.5 5 5.5.8-4 3.9.9 5.5-4.9-2.6-4.9 2.6.9-5.5-4-3.9 5.5-.8z"/>
+</svg>
+</span>Points</span><span class="item "><span class="ic"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+  <path d="M4.9 7.6a8 8 0 1 1-.7 5.9"/>
+  <path d="M4.9 3.6v4h4"/>
+  <path class="accent" stroke="#b0563a" d="M12 9v4l2.7 1.6"/>
+</svg>
+</span>History</span><span class="item "><span class="ic"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+  <circle cx="12" cy="12" r="6.2"/>
+  <circle cx="12" cy="12" r="2.4"/>
+  <path d="M12 3v2.8M12 18.2V21M3 12h2.8M18.2 12H21M5.6 5.6l2 2M16.4 16.4l2 2M18.4 5.6l-2 2M7.6 16.4l-2 2"/>
+</svg>
+</span>Settings</span>
+    <span style="flex:1"></span>
+    <span class="ic" style="color:#75695e"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="19" height="19" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+  <path d="M4 7a2.5 2.5 0 0 1 2.5-2.5h11A2.5 2.5 0 0 1 20 7v6.5a2.5 2.5 0 0 1-2.5 2.5H10l-4 3.5V16h-.5A2.5 2.5 0 0 1 3 13.5"/>
+  <g class="accent" fill="#b0563a" stroke="none">
+    <circle cx="8.8" cy="10.3" r="1.2"/><circle cx="12.4" cy="10.3" r="1.2"/><circle cx="16" cy="10.3" r="1.2"/>
+  </g>
+</svg>
+</span>
+  </div>
+
+  <h2>Little-kid tabs — chunky, filled, big radii</h2>
+  <div class="kidrow">
+    <div><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" width="48" height="48">
+  <rect x="4" y="4" width="40" height="40" rx="16" fill="#63925a"/>
+  <path d="m16 24.5 5.5 5.5 11-11.5" fill="none" stroke="#fffdf9" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>
+<span>My jobs</span></div>
+    <div><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" width="48" height="48">
+  <rect x="4" y="4" width="40" height="40" rx="16" fill="#3e5f7d"/>
+  <rect x="12" y="15" width="24" height="21" rx="5" fill="#fffdf9"/>
+  <rect x="12" y="15" width="24" height="7" rx="3.5" fill="#f3e4dc"/>
+  <path d="M17 11v6M31 11v6" stroke="#fffdf9" stroke-width="4" stroke-linecap="round"/>
+  <circle cx="24" cy="29" r="3" fill="#b0563a"/>
+</svg>
+<span>My days</span></div>
+    <div><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" width="48" height="48">
+  <rect x="4" y="4" width="40" height="40" rx="16" fill="#b0563a"/>
+  <rect x="13" y="13" width="7" height="7" rx="2.5" fill="#fffdf9"/>
+  <rect x="13" y="27" width="7" height="7" rx="2.5" fill="#fffdf9"/>
+  <path d="M25 16.5h10M25 30.5h10" stroke="#fffdf9" stroke-width="4" stroke-linecap="round"/>
+</svg>
+<span>Lists</span></div>
+    <div><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" width="48" height="48">
+  <rect x="4" y="4" width="40" height="40" rx="16" fill="#c08a2d"/>
+  <path d="m24 12 3.6 7.2 8 1.2-5.8 5.6 1.4 7.9-7.2-3.8-7.2 3.8 1.4-7.9-5.8-5.6 8-1.2z" fill="#fffdf9"/>
+</svg>
+<span>My stars</span></div>
+  </div>
+</body></html>
