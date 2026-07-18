@@ -112,8 +112,8 @@ no data — sign in and everything is there. → [setup / update](#3-the-ui-clie
 The app currently lives on the `claude/family-coordination-calendar-bs4zqo` branch:
 
 ```bash
-git clone -b claude/family-coordination-calendar-bs4zqo https://github.com/xattribution/coord.git
-cd coord
+git clone -b claude/family-coordination-calendar-bs4zqo https://github.com/xattribution/Hemma.git
+cd Hemma
 ```
 
 To just **run** Hemma on a server, skip straight to [Production (Docker)](#production-docker) —
@@ -132,7 +132,7 @@ Then:
 
 ```bash
 pnpm install
-pnpm seed        # demo family: Jared/Sam (password family123), Mia (PIN 1111), Leo (PIN 2222)
+pnpm seed        # a random generic demo family — parents password family123, teen PIN 1111, little kid pattern
 pnpm dev         # API :49733 + web :5173 (proxied; open :5173)
 ```
 
@@ -152,7 +152,7 @@ same way.
 **Easiest: the guided installer (any Linux box or NAS with Docker)**
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/xattribution/coord/main/deploy/install.sh | bash
+curl -fsSL https://raw.githubusercontent.com/xattribution/Hemma/HEAD/deploy/install.sh | bash
 ```
 
 It asks a handful of plain-language questions — where to keep things, your
@@ -162,12 +162,11 @@ and starts Hemma. Re-run it later to update. (It pulls the published image;
 use `bash install.sh --build` to build from source instead.)
 
 > Until the first `scripts/release.sh … --push-image` has published the
-> image to ghcr.io, the installer needs `--build` — and while the code
-> lives on the working branch, swap `main` in the URL for the branch name.
+> image to ghcr.io, the installer needs `--build`.
 
 **Windows PC as the server** — download
 `hemma-server-<version>-windows-x64.zip` from the
-[latest release](https://github.com/xattribution/coord/releases/latest),
+[latest release](https://github.com/xattribution/Hemma/releases/latest),
 unzip anywhere, double-click **Start Hemma.bat**. No Docker, no Node — the
 zip carries its own runtime. The README.txt inside covers backups and
 starting at boot.
@@ -242,8 +241,8 @@ can point at any relay URL (default `coord.tinbadger.com`).
 **Set up** (on a small VPS, [full guide](apps/relay/README.md)):
 
 ```bash
-git clone -b claude/family-coordination-calendar-bs4zqo https://github.com/xattribution/coord.git
-cd coord/deploy/relay
+git clone -b claude/family-coordination-calendar-bs4zqo https://github.com/xattribution/Hemma.git
+cd Hemma/deploy/relay
 docker compose up -d --build          # relay on port 8790
 # then proxy https://your-relay-domain → http://<vps>:8790
 # (no proxy on the box? RELAY_DOMAIN=your-domain docker compose --profile caddy up -d --build)

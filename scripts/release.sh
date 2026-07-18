@@ -2,7 +2,7 @@
 # Cut a Hemma release from a Linux machine with git + gh (GitHub CLI) set up.
 #
 #   scripts/release.sh 0.2.0                # everything except pushing the Docker image
-#   scripts/release.sh 0.2.0 --push-image   # also push ghcr.io/xattribution/coord (needs `docker login ghcr.io`)
+#   scripts/release.sh 0.2.0 --push-image   # also push ghcr.io/xattribution/hemma (needs `docker login ghcr.io`)
 #
 # What it does, in order:
 #   1. gate: clean tree, tests + typecheck pass
@@ -19,7 +19,7 @@ set -euo pipefail
 VERSION="${1:?usage: release.sh <version> [--push-image]}"
 PUSH_IMAGE=0; [ "${2:-}" = "--push-image" ] && PUSH_IMAGE=1
 TAG="v$VERSION"
-IMAGE="ghcr.io/xattribution/coord"
+IMAGE="ghcr.io/xattribution/hemma"
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$ROOT"
 
@@ -94,7 +94,7 @@ gh release create "$TAG" \
 ## Hemma $VERSION
 
 **Easy install (pick one):**
-- 🐳 **Docker (any Linux box/NAS):** \`curl -fsSL https://raw.githubusercontent.com/xattribution/coord/main/deploy/install.sh | bash\`
+- 🐳 **Docker (any Linux box/NAS):** \`curl -fsSL https://raw.githubusercontent.com/xattribution/Hemma/HEAD/deploy/install.sh | bash\`
 - 🪟 **Windows server:** download \`hemma-server-$VERSION-windows-x64.zip\`, unzip, double-click **Start Hemma.bat**
 - 🐧 **Linux server:** download \`hemma-server-$VERSION-linux-x64.tar.gz\`, unpack, run \`./start.sh\`
 

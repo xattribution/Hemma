@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Hemma — guided Docker setup for the family's home server.
 #
-#   curl -fsSL https://raw.githubusercontent.com/xattribution/coord/main/deploy/install.sh | bash
+#   curl -fsSL https://raw.githubusercontent.com/xattribution/Hemma/HEAD/deploy/install.sh | bash
 #   (or download it, look inside, and run: bash install.sh)
 #
 # Asks a few questions in plain language, writes a docker-compose.yml, and
@@ -11,8 +11,8 @@
 #   --build   build the image from source instead of pulling the published one
 set -euo pipefail
 
-IMAGE="ghcr.io/xattribution/coord:latest"
-REPO="https://github.com/xattribution/coord"
+IMAGE="ghcr.io/xattribution/hemma:latest"
+REPO="https://github.com/xattribution/Hemma"
 BUILD_FROM_SOURCE=0
 [ "${1:-}" = "--build" ] && BUILD_FROM_SOURCE=1
 

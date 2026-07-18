@@ -9,7 +9,7 @@ import { showToast } from "../../components/Toast";
  * app straight from the latest GitHub release, and home-screen instructions
  * for iPhone. Written for the least technical person in the family.
  */
-const REPO = "https://github.com/xattribution/coord";
+const REPO = "https://github.com/xattribution/Hemma";
 const APK_URL = `${REPO}/releases/latest/download/coord-android.apk`;
 const RELEASES_URL = `${REPO}/releases/latest`;
 

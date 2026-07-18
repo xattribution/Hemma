@@ -150,7 +150,7 @@ export function FamiliesSection() {
             <p className="text-xs font-semibold text-ink-soft">
               The connection server only relays sealed, encrypted blobs — it can't read anything.
               Prefer running your own? It's one command on any small VPS:{" "}
-              <a href="https://github.com/xattribution/coord/tree/claude/family-coordination-calendar-bs4zqo/apps/relay"
+              <a href="https://github.com/xattribution/Hemma/tree/claude/family-coordination-calendar-bs4zqo/apps/relay"
                 target="_blank" rel="noreferrer" className="text-coral underline">
                 self-host guide on GitHub
               </a>{" "}

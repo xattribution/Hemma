@@ -21,8 +21,8 @@ beforeAll(async () => {
   const setup = await app.inject({
     method: "POST", url: "/api/setup",
     payload: {
-      householdName: "The Kotvas Family", timezone: "America/New_York",
-      owner: { name: "Jared", color: "#3d87c9", avatar: "🦉", credential: "family123" },
+      householdName: "The Johnson Family", timezone: "America/New_York",
+      owner: { name: "Dana", color: "#3d87c9", avatar: "🦉", credential: "family123" },
     },
   });
   parentCookie = cookieOf(setup);
@@ -169,10 +169,10 @@ describe("household", () => {
   it("renames the family", async () => {
     const res = await app.inject({
       method: "PATCH", url: "/api/household", headers: { cookie: parentCookie },
-      payload: { name: "The Kotvas-West Crew" },
+      payload: { name: "The Johnson-West Crew" },
     });
     expect(res.statusCode).toBe(200);
     const me = await app.inject({ method: "GET", url: "/api/auth/me", headers: { cookie: parentCookie } });
-    expect(me.json().household.name).toBe("The Kotvas-West Crew");
+    expect(me.json().household.name).toBe("The Johnson-West Crew");
   });
 });

@@ -3,8 +3,11 @@
 **The app is named Hemma** (Swedish: "at home"). **It was originally called
 Coord**, and every *internal* identifier still uses the old name on purpose:
 
-- repo `xattribution/coord`, packages `@coord/*` (`@coord/server`, `@coord/web`,
-  `@coord/shared`, `@coord/shell`, `@coord/mcp`, `@coord/plugin-sdk`)
+- packages `@coord/*` (`@coord/server`, `@coord/web`, `@coord/shared`,
+  `@coord/shell`, `@coord/mcp`, `@coord/plugin-sdk`)
+  (the GitHub repo itself WAS renamed — it's `xattribution/Hemma` now, old
+  `xattribution/coord` URLs redirect; the container image is
+  `ghcr.io/xattribution/hemma`)
 - database file `coord.db`, Docker volume `coord-data`
 - session cookie `coord_session`, browser storage keys `coord.*`
 - env vars `COORD_URL` / `COORD_TOKEN` (MCP), Rust crate `coord-shell`

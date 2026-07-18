@@ -18,7 +18,7 @@ is applied in the order it happened. Concretely:
   "conflict" state surfaced to the family. Last update in that order is the
   current state.
 - The history feed shows the full ordered trail on both instances
-  ("Sam (Kotvas-West) checked Milk", "Jared unchecked Milk"), so nothing is
+  ("Robin (Johnson-West) checked Milk", "Dana unchecked Milk"), so nothing is
   silently lost even when an earlier write is superseded.
 
 ## 2. Email → calendar — direct by default, tray as an option
@@ -44,7 +44,7 @@ in the event description and in history, and is trivially deletable.
 
 Nothing is shared with another household unless a parent explicitly shares
 that category or list. Per-pairing share policy (e.g., "share: Shopping
-lists, Holiday events" with the Kotvas-West instance); kids' chores, points
+lists, Holiday events" with the Johnson-West instance); kids' chores, points
 and personal calendars stay private unless deliberately included. Either
 side can unshare at any time.
 

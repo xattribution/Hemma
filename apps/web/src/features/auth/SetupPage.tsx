@@ -35,12 +35,12 @@ export function SetupPage() {
       <form onSubmit={submit} className="space-y-4 rounded-card bg-card p-6 shadow-card">
         <div>
           <label className={labelCls}>Family name</label>
-          <input className={inputCls} placeholder="The Kotvas Family" value={householdName}
+          <input className={inputCls} placeholder="The Johnson Family" value={householdName}
             onChange={(e) => setHouseholdName(e.target.value)} required maxLength={60} />
         </div>
         <div>
           <label className={labelCls}>Your name</label>
-          <input className={inputCls} placeholder="Jared" value={name}
+          <input className={inputCls} placeholder="Dana" value={name}
             onChange={(e) => setName(e.target.value)} required maxLength={40} />
         </div>
         <div>

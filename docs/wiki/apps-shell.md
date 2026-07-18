@@ -32,7 +32,7 @@ Three "soccer-mom" install paths for the home server, all built by
    (project name `hemma`), starts, waits on `/api/health`, prints LAN
    addresses. Re-running = update (pull + up). Reads prompts from
    `/dev/tty` so `curl | bash` works. Default image
-   `ghcr.io/xattribution/coord:latest` (pushed by release.sh with
+   `ghcr.io/xattribution/hemma:latest` (pushed by release.sh with
    `--push-image`, multi-arch amd64+arm64 via buildx); `--build` builds
    from a source clone instead.
 2. **Standalone server bundles** — `scripts/build-server-bundle.sh

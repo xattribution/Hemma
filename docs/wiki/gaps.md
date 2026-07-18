@@ -2,7 +2,7 @@
 
 The honest list. Each entry: what's missing, where the seam is, and any
 existing plan doc. If you're a fresh agent looking for "what's next",
-start here (and confirm priorities with Jared first).
+start here (and confirm priorities with the project owner first).
 
 ## Not built yet (planned features)
 

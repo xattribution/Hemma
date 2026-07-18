@@ -2,10 +2,12 @@
 
 **Product name: Hemma** (Swedish: "at home"). **The app was originally
 named Coord** — if you're applying updates and see "coord" in code, that is
-NOT stale: repo + internal identifiers stay `coord` deliberately
-(`coord.db`, `coord-data` volume, `coord_session` cookie, `coord.*` storage
-keys, `@coord/*` packages, `COORD_URL`/`COORD_TOKEN` env — renaming any of
-them breaks live deployments). Brand only user-visible surfaces. Full rule
+NOT stale: internal identifiers stay `coord` deliberately (`coord.db`,
+`coord-data` volume, `coord_session` cookie, `coord.*` storage keys,
+`@coord/*` packages, `COORD_URL`/`COORD_TOKEN` env — renaming any of them
+breaks live deployments). The GitHub repo itself WAS renamed to
+`xattribution/Hemma` (old `coord` URLs redirect; container image is
+`ghcr.io/xattribution/hemma`). Brand only user-visible surfaces. Full rule
 in the root `CLAUDE.md`.
 
 This wiki exists so that a **new engineer or AI agent can pick up the project
@@ -94,8 +96,10 @@ permissions and audit attribution. Details in [server-core.md](server-core.md).
 - Tests: `pnpm --filter @coord/server test` (Vitest, ~85 tests incl. a
   two-instance federation suite over real HTTP + real crypto, points/group
   chores, fake-Immich proxy and fake-ICS subscription suites).
-- Seed demo data: `pnpm --filter @coord/server seed` (Jared/Sam `family123`,
-  Mia PIN `1111` teen-tier, Leo pattern cat→horse→cat→goat little-tier).
+- Seed demo data: `pnpm --filter @coord/server seed` — a random generic
+  family (Johnson/Smith/Miller/Rivera); credentials are always parents
+  `family123`, teen PIN `1111` (teen tier), little kid pattern
+  cat→horse→cat→goat (little tier). The seed prints the chosen names.
 - Browser verification: playwright-core with
   `executablePath: "/opt/pw-browsers/chromium"` (don't `playwright install`).
 - Frontend imports between local files are **extensionless** (Vite can't map

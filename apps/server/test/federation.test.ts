@@ -29,7 +29,7 @@ beforeAll(async () => {
   await B.listen({ port: 0, host: "127.0.0.1" });
   aUrl = `http://127.0.0.1:${(A.server.address() as { port: number }).port}`;
   bUrl = `http://127.0.0.1:${(B.server.address() as { port: number }).port}`;
-  aCookie = await setup(A, "Kotvas");
+  aCookie = await setup(A, "Johnson");
   bCookie = await setup(B, "Jonathans");
 }, 30000);
 
@@ -66,7 +66,7 @@ describe("family federation (direct, e2e encrypted)", () => {
 
     const onB = (await B.inject({ method: "GET", url: "/api/federation", headers: { cookie: bCookie } })).json();
     expect(onB.peers[0].status).toBe("active");
-    expect(onB.peers[0].name).toBe("Kotvas");
+    expect(onB.peers[0].name).toBe("Johnson");
   });
 
   it("shares a list; it appears on the other side with items", async () => {
@@ -88,7 +88,7 @@ describe("family federation (direct, e2e encrypted)", () => {
 
     const sharedOnB = (await B.inject({ method: "GET", url: "/api/federation/shared", headers: { cookie: bCookie } })).json();
     expect(sharedOnB.shared).toHaveLength(1);
-    expect(sharedOnB.shared[0].peerName).toBe("Kotvas");
+    expect(sharedOnB.shared[0].peerName).toBe("Johnson");
     expect(sharedOnB.shared[0].list.items[0].text).toBe("Eggs");
   });
 
