@@ -60,6 +60,13 @@ screen on iPhone and Android alike and runs full-screen on a kitchen display.
   other MCP clients, LLM-readable API docs at `/llms.txt`, and a
   cross-entity search endpoint; everything an AI does shows up in History
   under its name ("HAL added Eggs (Costco) to Groceries")
+- **Family messages & file sending** — a tucked-away message box for
+  threads with connected families: texts, and files that transfer straight
+  between the two home servers as **end-to-end-encrypted chunks** (accept
+  first, then save to the family folder or the NAS, or download to the
+  device in hand). Parents always have access and can read every thread;
+  kids only join when a parent grants it — parental oversight is built in,
+  not optional
 - **History** — a searchable "what's been happening" feed (who completed,
   swapped, added, changed what — and when)
 - **Real-time everywhere** — WebSocket-driven updates land on every screen

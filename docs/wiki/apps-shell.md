@@ -52,7 +52,7 @@ finishes, so tauri-action attaches the desktop/APK bundles to the same
 release (~30 min later). Release assets: both server bundles, install.sh,
 SHA256SUMS.txt. The web app's **Settings → Phones & tablets**
 (`AppsSection.tsx`) shows the server address + a QR pointing at
-`releases/latest/download/coord-android.apk` — that asset name is stable,
+`releases/latest/download/hemma-android.apk` — that asset name is stable,
 so the QR never goes stale.
 
 ## Relay (`apps/relay` + `deploy/relay`)

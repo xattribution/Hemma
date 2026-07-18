@@ -250,6 +250,53 @@ export function useSubscriptionMutations() {
   };
 }
 
+// ---------- Family messages & file transfers ----------
+
+export const useThreads = (enabled = true) =>
+  useQuery({
+    queryKey: ["messages"],
+    queryFn: () => api<{ threads: import("@coord/shared").MessageThread[] }>("/api/messages"),
+    select: (d) => d.threads,
+    enabled,
+    refetchInterval: 90_000,
+  });
+
+export const useThread = (peerId: string | null) =>
+  useQuery({
+    queryKey: ["messages", peerId],
+    queryFn: () =>
+      api<{ messages: import("@coord/shared").FedMessage[]; transfers: Record<string, import("@coord/shared").FedTransfer> }>(
+        `/api/messages/${peerId}`,
+      ),
+    enabled: !!peerId,
+  });
+
+export function useMessageMutations() {
+  const qc = useQueryClient();
+  const invalidate = () => void qc.invalidateQueries({ queryKey: ["messages"] });
+  return {
+    send: useMutation({
+      mutationFn: (args: { peerId: string; text: string }) =>
+        api(`/api/messages/${args.peerId}`, { method: "POST", body: { text: args.text } }),
+      onSuccess: invalidate,
+    }),
+    markRead: useMutation({
+      mutationFn: (peerId: string) => api(`/api/messages/${peerId}/read`, { method: "POST" }),
+      onSuccess: invalidate,
+    }),
+    accept: useMutation({
+      mutationFn: (args: { transferId: string; dest: "nas" | "app" }) =>
+        api(`/api/messages/transfers/${args.transferId}/accept`, { method: "POST", body: { dest: args.dest } }),
+      onSuccess: invalidate,
+    }),
+    decline: useMutation({
+      mutationFn: (transferId: string) =>
+        api(`/api/messages/transfers/${transferId}/decline`, { method: "POST" }),
+      onSuccess: invalidate,
+    }),
+  };
+}
+
 // ---------- Checklists ----------
 
 export const useChecklists = () =>

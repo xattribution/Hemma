@@ -65,6 +65,31 @@ Tests: `test/federation.test.ts` — two real instances over HTTP: pair,
 share, cross-check, event copy, silent revoke, poll rescue endpoint,
 self-pair rejection, pending cancel, placeholder delete.
 
+## Messages & file transfers (v12)
+
+One thread per peer (household-level; per-person DMs and group chats are
+future seams). UI: the 💬 button in the header (`MessagesPanel.tsx`) —
+parents always, kids via the `messages.use` grant; **parents read every
+thread by design** (parental control is mandatory per the user).
+Notifications ride the standard pipeline (`reminder.fired` bus event →
+toast + web push, targeted at eligible members, deliberately with **no
+content preview** so wall displays never read messages out).
+
+Files: offer/accept, never auto-transfer. Sender uploads raw bytes
+(`PUT /api/messages/:peerId/file`, octet-stream, ≤200 MB buffered) into
+`FILES_DIR|data/files/outbox`; a sealed `file.offer` (name, size, sha256,
+chunk plan) rides the normal channel. On accept the receiver chooses
+`app` (data files dir) or `nas` (`<nas>/files/Shared from <peer>/`) and
+pulls chunks from `POST /api/federation/blob` — request AND response are
+sealed with the pair key (auth = the seal; strangers get 404), 512 KiB
+chunks, sequential, sha256-verified whole-file, unique-suffixed
+filenames, `file.done`/`file.decline` close the loop. Direct transport
+required for chunks (the RAM-only relay is not a file pipe); relay-only
+pairs get a clear error. Failed pulls surface the reason and "accept
+again to retry". Tables: `fed_messages`, `fed_transfers`,
+`message_reads` (per-member unread). Tests: `test/messages.test.ts`
+(two real instances, byte-for-byte verification, grant enforcement).
+
 ## Pending / gaps
 
 - No live end-to-end test against the real `coord.tinbadger.com` relay yet

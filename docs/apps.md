@@ -21,7 +21,7 @@ That produces a GitHub release with:
 | `Hemma_x.y.z_x64-setup.exe` / `.msi` | Windows |
 | `Hemma_x.y.z_amd64.deb` / `.AppImage` | Linux |
 | `Hemma_x.y.z_*.dmg` | macOS |
-| `coord-android.apk` | Android (sideload) |
+| `hemma-android.apk` (or the versioned `hemma-x.y.z-android.apk`) | Android (sideload) |
 
 You can also run the workflow manually (Actions → apps → Run workflow) to get
 the same files as workflow artifacts without cutting a release.

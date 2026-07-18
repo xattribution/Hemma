@@ -12,6 +12,7 @@ export type QueryKeyPattern =
   | "points"
   | "dashboard"
   | "audit"
+  | "messages"
   | "me"; // display config changes propagate to signed-in kiosks
 
 export type WsServerMessage =

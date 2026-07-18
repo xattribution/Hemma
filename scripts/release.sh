@@ -117,7 +117,7 @@ gh release create "$TAG" \
 - 🐧 **Linux server:** download \`hemma-server-$VERSION-linux-x64.tar.gz\`, unpack, run \`./start.sh\`
 
 **Apps** (attached below by CI within ~30 min of this release appearing):
-- 📱 Android: \`coord-android.apk\` — sideload it, open, type your server address (Settings → Phones & tablets shows a QR + the address)
+- 📱 Android: \`hemma-android.apk\` — sideload it, open, type your server address (Settings → Phones & tablets shows a QR + the address)
 - 💻 Windows/macOS/Linux desktop clients: the .exe / .dmg / .deb / .AppImage files
 - iPhone: use the web app → Share → Add to Home Screen (App Store build is on the roadmap)
 

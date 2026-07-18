@@ -1,6 +1,11 @@
+import crypto from "node:crypto";
+import fs from "node:fs";
+import path from "node:path";
 import { z } from "zod";
 import type { Checklist } from "@coord/shared";
 import type { CoreModule } from "../core/plugin-host.js";
+import { config } from "../config.js";
+import { settingsFor } from "../core/settings.js";
 import { loginAllowed, recordLoginFailure, requireAccess, requireActor } from "../core/auth.js";
 import { actorOf } from "../core/actor.js";
 import { parse } from "../core/http.js";
@@ -49,7 +54,49 @@ type FedMessage =
   | { type: "list.op"; remoteId: string; itemId: string; op: "toggle" }
   | { type: "event.copy"; event: Record<string, unknown> }
   | { type: "photo.link"; url: string }
+  | { type: "msg.text"; text: string; from: string }
+  | { type: "file.offer"; transferId: string; name: string; size: number; sha256: string; chunkSize: number; chunks: number; from: string }
+  | { type: "file.accept"; transferId: string }
+  | { type: "file.decline"; transferId: string }
+  | { type: "file.done"; transferId: string }
   | { type: "peer.remove" };
+
+const CHUNK_SIZE = 512 * 1024;
+const MAX_UPLOAD_BYTES = 200 * 1024 * 1024; // buffered upload — keep sane
+const MAX_OFFER_BYTES = 2 * 1024 * 1024 * 1024;
+
+interface TransferRow {
+  id: string;
+  peer_id: string;
+  direction: "in" | "out";
+  name: string;
+  size: number;
+  sha256: string;
+  chunk_size: number;
+  chunks: number;
+  status: "offered" | "sending" | "receiving" | "done" | "declined" | "failed";
+  progress: number;
+  dest: "nas" | "app" | null;
+  local_path: string | null;
+  error: string | null;
+  created_at: number;
+  updated_at: number;
+}
+
+interface MessageRow {
+  id: string;
+  peer_id: string;
+  direction: "in" | "out";
+  sender: string;
+  kind: "text" | "file";
+  body: string;
+  transfer_id: string | null;
+  created_at: number;
+}
+
+/** "../../etc passwd" → "etc passwd"; empty → "file". */
+const safeName = (raw: string) =>
+  (path.basename(raw).replace(/[\u0000-\u001f]/g, "").trim() || "file").slice(0, 150);
 
 export const federationModule: CoreModule = {
   id: "core.federation",
@@ -162,6 +209,39 @@ export const federationModule: CoreModule = {
           });
           break;
         }
+        case "msg.text": {
+          recordMessage(peer, "in", `${message.from} (${peer.name})`, null, "text", String(message.text).slice(0, 4000), null);
+          break;
+        }
+        case "file.offer": {
+          const size = Number(message.size);
+          const chunkSize = Number(message.chunkSize);
+          const chunks = Number(message.chunks);
+          if (!Number.isFinite(size) || size <= 0 || size > MAX_OFFER_BYTES) return;
+          if (chunkSize <= 0 || chunkSize > 4 * 1024 * 1024 || chunks !== Math.ceil(size / chunkSize)) return;
+          const name = safeName(message.name);
+          db.prepare(
+            `INSERT OR IGNORE INTO fed_transfers (id, peer_id, direction, name, size, sha256, chunk_size, chunks, status, created_at, updated_at)
+             VALUES (?, ?, 'in', ?, ?, ?, ?, ?, 'offered', ?, ?)`,
+          ).run(message.transferId, peer.id, name, size, String(message.sha256), chunkSize, chunks, now(), now());
+          recordMessage(peer, "in", `${message.from} (${peer.name})`, null, "file", name, message.transferId);
+          break;
+        }
+        case "file.accept": {
+          const t = getTransfer(message.transferId);
+          if (t && t.peer_id === peer.id && t.direction === "out") setTransfer(t.id, { status: "sending" });
+          break;
+        }
+        case "file.decline": {
+          const t = getTransfer(message.transferId);
+          if (t && t.peer_id === peer.id && t.direction === "out") setTransfer(t.id, { status: "declined" });
+          break;
+        }
+        case "file.done": {
+          const t = getTransfer(message.transferId);
+          if (t && t.peer_id === peer.id && t.direction === "out") setTransfer(t.id, { status: "done", progress: t.chunks });
+          break;
+        }
         case "peer.remove": {
           removePeerLocal(peer.id);
           break;
@@ -172,9 +252,156 @@ export const federationModule: CoreModule = {
     function removePeerLocal(peerId: string) {
       db.prepare("DELETE FROM federated_lists WHERE peer_id = ?").run(peerId);
       db.prepare("DELETE FROM peer_shares WHERE peer_id = ?").run(peerId);
+      db.prepare("DELETE FROM fed_messages WHERE peer_id = ?").run(peerId);
+      db.prepare("DELETE FROM fed_transfers WHERE peer_id = ?").run(peerId);
+      db.prepare("DELETE FROM message_reads WHERE peer_id = ?").run(peerId);
       db.prepare("DELETE FROM peers WHERE id = ?").run(peerId);
       invalidate();
       fedChanged();
+    }
+
+    // ---------- messages & file transfers ----------
+
+    const messagesChanged = () => broadcast({ type: "invalidate", keys: ["messages"] });
+    /** Where received/outgoing files live when not on the NAS. */
+    const appFilesRoot = () =>
+      process.env.FILES_DIR ?? path.join(path.dirname(config.databasePath), "files");
+    const nasFilesRoot = () => {
+      const root = settingsFor(db, "nas").get<string>("root", "").replace(/\/+$/, "");
+      return root ? path.join(root, "files") : null;
+    };
+
+    /** Members allowed to use messages: parents + kids a parent granted. */
+    const messengerIds = () =>
+      (db.prepare("SELECT id, role, grants_json FROM members").all() as
+        { id: string; role: string; grants_json: string | null }[])
+        .filter((m) => m.role === "parent" ||
+          (m.grants_json ? (JSON.parse(m.grants_json) as string[]).includes("messages.use") : false))
+        .map((m) => m.id);
+
+    function requireMessenger(req: Parameters<typeof requireAccess>[1], reply: Parameters<typeof requireAccess>[2]) {
+      const access = requireAccess(db, req, reply);
+      if (!access) return null;
+      if (access.kind === "device") {
+        reply.code(403).send({ error: "Displays can't use messages" });
+        return null;
+      }
+      if (access.kind === "member" && access.role !== "parent") {
+        const row = db.prepare("SELECT grants_json FROM members WHERE id = ?").get(access.memberId) as
+          { grants_json: string | null } | undefined;
+        const grants = row?.grants_json ? (JSON.parse(row.grants_json) as string[]) : [];
+        if (!grants.includes("messages.use")) {
+          reply.code(403).send({ error: "Ask a parent to switch on messages for you" });
+          return null;
+        }
+      }
+      return access;
+    }
+
+    function recordMessage(
+      peer: PeerRow, direction: "in" | "out", sender: string, senderMemberId: string | null,
+      kind: "text" | "file", body: string, transferId: string | null,
+    ) {
+      db.prepare(
+        `INSERT INTO fed_messages (id, peer_id, direction, sender, sender_member_id, kind, body, transfer_id, created_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      ).run(uid(), peer.id, direction, sender, senderMemberId, kind, body, transferId, now());
+      messagesChanged();
+      if (direction === "in") {
+        // Standard notification pipeline (toast + web push via the reminders
+        // bridge). Deliberately NO content preview — message bodies stay
+        // behind sign-in, and wall displays shouldn't read them out.
+        bus.emit("reminder.fired", {
+          entityType: "event", entityId: "",
+          title: "💬 New family message", body: `From ${peer.name}`,
+          targetMemberIds: messengerIds(),
+        });
+      }
+    }
+
+    const toApiTransfer = (t: TransferRow) => ({
+      id: t.id, peerId: t.peer_id, direction: t.direction, name: t.name, size: t.size,
+      sha256: t.sha256, chunks: t.chunks, status: t.status, progress: t.progress,
+      dest: t.dest, error: t.error, createdAt: t.created_at,
+    });
+    const toApiMessage = (m: MessageRow) => ({
+      id: m.id, peerId: m.peer_id, direction: m.direction, sender: m.sender,
+      kind: m.kind, body: m.body, transferId: m.transfer_id, createdAt: m.created_at,
+    });
+    const getTransfer = (id: string) =>
+      db.prepare("SELECT * FROM fed_transfers WHERE id = ?").get(id) as TransferRow | undefined;
+    const setTransfer = (id: string, fields: Partial<TransferRow>) => {
+      const sets = Object.keys(fields).map((k) => `${k} = ?`).join(", ");
+      db.prepare(`UPDATE fed_transfers SET ${sets}, updated_at = ? WHERE id = ?`)
+        .run(...Object.values(fields), now(), id);
+      messagesChanged();
+    };
+
+    /** name.jpg → name (2).jpg if taken; keeps families from clobbering files. */
+    function uniquePath(dir: string, name: string): string {
+      const ext = path.extname(name);
+      const stem = name.slice(0, name.length - ext.length);
+      let candidate = path.join(dir, name);
+      for (let n = 2; fs.existsSync(candidate); n++) candidate = path.join(dir, `${stem} (${n})${ext}`);
+      return candidate;
+    }
+
+    /** Pull all chunks of an accepted incoming transfer from the sender. */
+    const pulling = new Set<string>();
+    async function pullTransfer(transferId: string) {
+      if (pulling.has(transferId)) return;
+      pulling.add(transferId);
+      try {
+        const t = getTransfer(transferId);
+        const peer = t && (db.prepare("SELECT * FROM peers WHERE id = ?").get(t.peer_id) as PeerRow | undefined);
+        if (!t || !peer || t.direction !== "in" || !t.local_path) return;
+        if (peer.transport !== "direct" || !peer.peer_url) {
+          setTransfer(transferId, { status: "failed", error: "File transfers need a direct connection between the two families" });
+          return;
+        }
+        const url = `${peer.peer_url.replace(/\/$/, "")}/api/federation/blob`;
+        const hash = crypto.createHash("sha256");
+        fs.mkdirSync(path.dirname(t.local_path), { recursive: true });
+        const handle = await fs.promises.open(t.local_path, "w");
+        try {
+          for (let chunk = 0; chunk < t.chunks; chunk++) {
+            const res = await fetch(url, {
+              method: "POST",
+              headers: { "content-type": "application/json" },
+              body: JSON.stringify({ pk: keys.publicKey, body: seal(peer.shared_key, { transferId, chunk }) }),
+            });
+            if (!res.ok) throw new Error(`their server said ${res.status}`);
+            const sealed = (await res.json()) as { body?: string };
+            if (!sealed.body) throw new Error("empty chunk reply");
+            const payload = open<{ chunk: number; data: string }>(peer.shared_key, sealed.body);
+            if (payload.chunk !== chunk) throw new Error("chunk order mismatch");
+            const buf = Buffer.from(payload.data, "base64");
+            hash.update(buf);
+            await handle.write(buf, 0, buf.length, chunk * t.chunk_size);
+            if (chunk % 8 === 0 || chunk === t.chunks - 1) setTransfer(transferId, { progress: chunk + 1 });
+          }
+        } finally {
+          await handle.close();
+        }
+        if (hash.digest("hex") !== t.sha256) {
+          fs.rmSync(t.local_path, { force: true });
+          setTransfer(transferId, { status: "failed", error: "The file arrived damaged — ask them to send it again" });
+          return;
+        }
+        setTransfer(transferId, { status: "done", progress: t.chunks });
+        await sendToPeer(peer, { type: "file.done", transferId });
+        recordAudit(db, getHousehold(db)!.id, { memberId: null, name: peer.name }, "peer", peer.id, "create",
+          `Received "${t.name}" from ${peer.name} 📁`);
+        bus.emit("reminder.fired", {
+          entityType: "event", entityId: "",
+          title: "📁 File received", body: `"${t.name}" from ${peer.name} is ready`,
+          targetMemberIds: messengerIds(),
+        });
+      } catch (err) {
+        setTransfer(transferId, { status: "failed", error: `Transfer interrupted (${String(err instanceof Error ? err.message : err)}) — accept again to retry` });
+      } finally {
+        pulling.delete(transferId);
+      }
     }
 
     function receiveEnvelope(envelope: { pk?: string; body?: string }) {
@@ -265,6 +492,39 @@ export const federationModule: CoreModule = {
     app.post("/api/federation/inbox", (req) => {
       receiveEnvelope((req.body ?? {}) as { pk?: string; body?: string });
       return { ok: true };
+    });
+
+    // File-chunk pull. Request AND response are sealed with the pair key, so
+    // proxies and analyzers see the same opaque blobs as every other
+    // federation payload. Auth is the seal: only the paired family can form
+    // a valid request or read the reply.
+    app.post("/api/federation/blob", async (req, reply) => {
+      const envelope = (req.body ?? {}) as { pk?: string; body?: string };
+      const peer = envelope.pk &&
+        (db.prepare("SELECT * FROM peers WHERE pubkey = ? AND status = 'active'").get(envelope.pk) as PeerRow | undefined);
+      if (!peer || !envelope.body) return reply.code(404).send({ error: "no" });
+      let ask: { transferId: string; chunk: number };
+      try {
+        ask = open(peer.shared_key, envelope.body);
+      } catch {
+        return reply.code(404).send({ error: "no" });
+      }
+      const t = getTransfer(ask.transferId);
+      if (!t || t.peer_id !== peer.id || t.direction !== "out" || !t.local_path ||
+          !["offered", "sending"].includes(t.status) || ask.chunk < 0 || ask.chunk >= t.chunks) {
+        return reply.code(404).send({ error: "no" });
+      }
+      const handle = await fs.promises.open(t.local_path, "r");
+      try {
+        const length = Math.min(t.chunk_size, t.size - ask.chunk * t.chunk_size);
+        const buf = Buffer.alloc(length);
+        await handle.read(buf, 0, length, ask.chunk * t.chunk_size);
+        if (t.status === "offered") setTransfer(t.id, { status: "sending" });
+        if (ask.chunk + 1 > t.progress) setTransfer(t.id, { progress: ask.chunk + 1 });
+        return { body: seal(peer.shared_key, { chunk: ask.chunk, data: buf.toString("base64") }) };
+      } finally {
+        await handle.close();
+      }
     });
 
     // "Any verdict on my request?" — a pending requester polls this until the
@@ -649,6 +909,149 @@ export const federationModule: CoreModule = {
       }
       await sendToPeer(peer, { type: "list.op", remoteId, itemId: body.itemId, op: "toggle" });
       return { ok: true };
+    });
+
+    // ---------- the message box (parents + kids a parent granted) ----------
+
+    // Threads: one per connected family, with unread counts for this member.
+    app.get("/api/messages", (req, reply) => {
+      const access = requireMessenger(req, reply);
+      if (!access) return;
+      const peers = db.prepare("SELECT * FROM peers WHERE status = 'active' ORDER BY name").all() as PeerRow[];
+      const threads = peers.map((peer) => {
+        const last = db.prepare("SELECT * FROM fed_messages WHERE peer_id = ? ORDER BY created_at DESC LIMIT 1")
+          .get(peer.id) as MessageRow | undefined;
+        const seen = access.memberId
+          ? ((db.prepare("SELECT last_seen_at FROM message_reads WHERE member_id = ? AND peer_id = ?")
+              .get(access.memberId, peer.id) as { last_seen_at: number } | undefined)?.last_seen_at ?? 0)
+          : Number.MAX_SAFE_INTEGER; // agents don't track unread
+        const unread = (db.prepare(
+          "SELECT COUNT(*) AS n FROM fed_messages WHERE peer_id = ? AND direction = 'in' AND created_at > ?",
+        ).get(peer.id, seen) as { n: number }).n;
+        return { peerId: peer.id, peerName: peer.name, lastMessage: last ? toApiMessage(last) : null, unread };
+      });
+      return { threads };
+    });
+
+    app.get("/api/messages/:peerId", (req, reply) => {
+      const access = requireMessenger(req, reply);
+      if (!access) return;
+      const { peerId } = req.params as { peerId: string };
+      const messages = (db.prepare(
+        "SELECT * FROM fed_messages WHERE peer_id = ? ORDER BY created_at DESC LIMIT 200",
+      ).all(peerId) as MessageRow[]).reverse();
+      const transferIds = messages.map((m) => m.transfer_id).filter(Boolean) as string[];
+      const transfers = Object.fromEntries(
+        transferIds.map((id) => [id, getTransfer(id)]).filter(([, t]) => t).map(([id, t]) => [id, toApiTransfer(t as TransferRow)]),
+      );
+      return { messages: messages.map(toApiMessage), transfers };
+    });
+
+    app.post("/api/messages/:peerId/read", (req, reply) => {
+      const access = requireMessenger(req, reply);
+      if (!access?.memberId) return access ? { ok: true } : undefined;
+      db.prepare(
+        `INSERT INTO message_reads (member_id, peer_id, last_seen_at) VALUES (?, ?, ?)
+         ON CONFLICT (member_id, peer_id) DO UPDATE SET last_seen_at = excluded.last_seen_at`,
+      ).run(access.memberId, (req.params as { peerId: string }).peerId, now());
+      return { ok: true };
+    });
+
+    app.post("/api/messages/:peerId", async (req, reply) => {
+      const access = requireMessenger(req, reply);
+      if (!access) return;
+      const body = parse(z.object({ text: z.string().trim().min(1).max(4000) }), req.body, reply);
+      if (!body) return;
+      const peer = db.prepare("SELECT * FROM peers WHERE id = ? AND status = 'active'")
+        .get((req.params as { peerId: string }).peerId) as PeerRow | undefined;
+      if (!peer) return reply.code(404).send({ error: "Family not found" });
+      recordMessage(peer, "out", access.name, access.memberId, "text", body.text, null);
+      await sendToPeer(peer, { type: "msg.text", text: body.text, from: access.name });
+      return { ok: true };
+    });
+
+    // Offer a file: raw upload (application/octet-stream) + ?name=.
+    app.put("/api/messages/:peerId/file", { bodyLimit: MAX_UPLOAD_BYTES + 1024 }, async (req, reply) => {
+      const access = requireMessenger(req, reply);
+      if (!access) return;
+      const peer = db.prepare("SELECT * FROM peers WHERE id = ? AND status = 'active'")
+        .get((req.params as { peerId: string }).peerId) as PeerRow | undefined;
+      if (!peer) return reply.code(404).send({ error: "Family not found" });
+      if (peer.transport !== "direct" || !peer.peer_url) {
+        return reply.code(400).send({ error: "File transfers need a direct connection between the two families (not the relay)" });
+      }
+      const data = req.body as Buffer;
+      if (!Buffer.isBuffer(data) || data.length === 0) return reply.code(400).send({ error: "No file received" });
+      const name = safeName(String((req.query as { name?: string }).name ?? "file"));
+      const transferId = uid();
+      const dir = path.join(appFilesRoot(), "outbox");
+      fs.mkdirSync(dir, { recursive: true });
+      const localPath = path.join(dir, `${transferId}-${name}`);
+      fs.writeFileSync(localPath, data);
+      const sha256 = crypto.createHash("sha256").update(data).digest("hex");
+      const chunks = Math.ceil(data.length / CHUNK_SIZE);
+      db.prepare(
+        `INSERT INTO fed_transfers (id, peer_id, direction, name, size, sha256, chunk_size, chunks, status, local_path, created_at, updated_at)
+         VALUES (?, ?, 'out', ?, ?, ?, ?, ?, 'offered', ?, ?, ?)`,
+      ).run(transferId, peer.id, name, data.length, sha256, CHUNK_SIZE, chunks, localPath, now(), now());
+      recordMessage(peer, "out", access.name, access.memberId, "file", name, transferId);
+      await sendToPeer(peer, {
+        type: "file.offer", transferId, name, size: data.length, sha256, chunkSize: CHUNK_SIZE, chunks, from: access.name,
+      });
+      recordAudit(db, access.householdId, actorOf(access), "peer", peer.id, "update",
+        `${access.name} sent "${name}" to ${peer.name}`);
+      return { ok: true, transferId };
+    });
+
+    // Accept an incoming file: choose where it lands, then pull it.
+    app.post("/api/messages/transfers/:id/accept", async (req, reply) => {
+      const access = requireMessenger(req, reply);
+      if (!access) return;
+      const body = parse(z.object({ dest: z.enum(["nas", "app"]).default("app") }), req.body ?? {}, reply);
+      if (!body) return;
+      const t = getTransfer((req.params as { id: string }).id);
+      if (!t || t.direction !== "in") return reply.code(404).send({ error: "Transfer not found" });
+      if (!["offered", "failed"].includes(t.status)) return reply.code(400).send({ error: "Already handled" });
+      const peer = db.prepare("SELECT * FROM peers WHERE id = ?").get(t.peer_id) as PeerRow | undefined;
+      if (!peer) return reply.code(404).send({ error: "Family not found" });
+      let baseDir: string;
+      if (body.dest === "nas") {
+        const nas = nasFilesRoot();
+        if (!nas) return reply.code(400).send({ error: "No NAS folder is connected (Settings → Photos)" });
+        baseDir = path.join(nas, `Shared from ${peer.name}`.replace(/[/\\]/g, " "));
+      } else {
+        baseDir = path.join(appFilesRoot(), `Shared from ${peer.name}`.replace(/[/\\]/g, " "));
+      }
+      fs.mkdirSync(baseDir, { recursive: true });
+      setTransfer(t.id, { status: "receiving", progress: 0, dest: body.dest, local_path: uniquePath(baseDir, t.name), error: null });
+      await sendToPeer(peer, { type: "file.accept", transferId: t.id });
+      void pullTransfer(t.id);
+      return { ok: true };
+    });
+
+    app.post("/api/messages/transfers/:id/decline", async (req, reply) => {
+      const access = requireMessenger(req, reply);
+      if (!access) return;
+      const t = getTransfer((req.params as { id: string }).id);
+      if (!t || t.direction !== "in") return reply.code(404).send({ error: "Transfer not found" });
+      setTransfer(t.id, { status: "declined" });
+      const peer = db.prepare("SELECT * FROM peers WHERE id = ?").get(t.peer_id) as PeerRow | undefined;
+      if (peer) await sendToPeer(peer, { type: "file.decline", transferId: t.id });
+      return { ok: true };
+    });
+
+    // Download a completed file to the device in hand.
+    app.get("/api/messages/transfers/:id/download", async (req, reply) => {
+      const access = requireMessenger(req, reply);
+      if (!access) return;
+      const t = getTransfer((req.params as { id: string }).id);
+      if (!t || t.status !== "done" || !t.local_path || !fs.existsSync(t.local_path)) {
+        return reply.code(404).send({ error: "File not available" });
+      }
+      reply
+        .header("content-type", "application/octet-stream")
+        .header("content-disposition", `attachment; filename="${t.name.replace(/"/g, "")}"`);
+      return reply.send(fs.createReadStream(t.local_path));
     });
   },
 };

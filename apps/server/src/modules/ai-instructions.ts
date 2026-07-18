@@ -152,6 +152,25 @@ on the other side).
 "Send Jonathan's family the Costco list" = find the peer by name, find the
 list, POST share. Never share anything not explicitly asked for.
 
+## Family messages & file transfers
+
+One thread per connected family; everything crosses the wire end-to-end
+encrypted. Parents (and you) see every thread — parental visibility is a
+deliberate, structural rule. Kids need a parent-granted "messages.use".
+
+- GET /api/messages → threads: [{ peerId, peerName, lastMessage, unread }]
+- GET /api/messages/:peerId → { messages (oldest→newest), transfers } —
+  messages: { sender, direction, kind: "text"|"file", body, transferId }
+- POST /api/messages/:peerId — { "text": "Dinner Sunday?" }
+- PUT /api/messages/:peerId/file?name=photo.zip — raw octet-stream body
+  (≤200 MB) offers a file; the other family must accept before any content
+  moves. Needs a direct connection (not relay-only).
+- POST /api/messages/transfers/:id/accept { "dest": "app"|"nas" } — accept
+  an incoming offer; the file lands in the family folder (or NAS files/)
+- POST /api/messages/transfers/:id/decline
+- GET /api/messages/transfers/:id/download — pull a completed file
+Relay messages politely; never auto-accept files without being asked.
+
 ## Points
 
 Points are a ledger — every entry has a reason. Chore/step points land

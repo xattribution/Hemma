@@ -10,7 +10,7 @@ import { showToast } from "../../components/Toast";
  * for iPhone. Written for the least technical person in the family.
  */
 const REPO = "https://github.com/xattribution/Hemma";
-const APK_URL = `${REPO}/releases/latest/download/coord-android.apk`;
+const APK_URL = `${REPO}/releases/latest/download/hemma-android.apk`;
 const RELEASES_URL = `${REPO}/releases/latest`;
 
 export function AppsSection() {

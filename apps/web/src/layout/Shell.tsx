@@ -1,12 +1,13 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { NavLink, Outlet } from "react-router";
-import { CalendarDays, ClipboardList, History, Images, ListChecks, LogOut, Settings, Star, UsersRound } from "lucide-react";
+import { CalendarDays, ClipboardList, History, Images, ListChecks, LogOut, MessageSquare, Settings, Star, UsersRound } from "lucide-react";
 import type { Me } from "@coord/shared";
 import { Avatar } from "../components/Avatar";
 import { SwitchPersonModal } from "../components/SwitchPersonModal";
 import { ThemeToggle } from "../components/ThemeToggle";
 import { SlideshowOverlay, SlideshowSetupModal, useIdleSlideshow } from "../features/photos/Slideshow";
-import { useLogout } from "../api/queries";
+import { MessagesPanel } from "../features/messages/MessagesPanel";
+import { useLogout, useThreads } from "../api/queries";
 
 const ALL_TABS = [
   { to: "/calendar", label: "Calendar", icon: CalendarDays },
@@ -27,7 +28,13 @@ export function Shell({ me }: { me: Extract<Me, { kind: "member" }> }) {
   const [switching, setSwitching] = useState(false);
   const [slides, setSlides] = useState(false);
   const [slidesSetup, setSlidesSetup] = useState(false);
+  const [messagesOpen, setMessagesOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
+
+  // The message box: parents always; kids only when a parent granted it.
+  const canMessage = me.member.role === "parent" || me.member.grants.includes("messages.use");
+  const { data: threads } = useThreads(canMessage);
+  const unread = (threads ?? []).reduce((sum, t) => sum + t.unread, 0);
 
   const startSlides = useCallback(() => setSlides(true), []);
   useIdleSlideshow(startSlides, slides);
@@ -64,6 +71,22 @@ export function Shell({ me }: { me: Extract<Me, { kind: "member" }> }) {
             </NavLink>
           ))}
         </nav>
+        {canMessage && (
+          <button
+            type="button"
+            onClick={() => setMessagesOpen(true)}
+            title="Messages"
+            aria-label={unread ? `Messages — ${unread} unread` : "Messages"}
+            className="relative rounded-xl border-2 border-line bg-card p-2 text-ink-soft transition hover:border-coral hover:text-coral"
+          >
+            <MessageSquare size={18} />
+            {unread > 0 && (
+              <span className="absolute -right-1.5 -top-1.5 flex h-5 min-w-5 items-center justify-center rounded-full bg-coral px-1 text-[10px] font-extrabold text-white">
+                {unread > 9 ? "9+" : unread}
+              </span>
+            )}
+          </button>
+        )}
         <ThemeToggle />
         <div className="relative" ref={menuRef}>
           <button
@@ -119,6 +142,7 @@ export function Shell({ me }: { me: Extract<Me, { kind: "member" }> }) {
         </div>
       </header>
 
+      {messagesOpen && <MessagesPanel onClose={() => setMessagesOpen(false)} />}
       {switching && <SwitchPersonModal currentId={me.member.id} onClose={() => setSwitching(false)} />}
       {slidesSetup && <SlideshowSetupModal onStart={startSlides} onClose={() => setSlidesSetup(false)} />}
       {slides && <SlideshowOverlay onExit={() => setSlides(false)} />}

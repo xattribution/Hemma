@@ -5,7 +5,7 @@ import crypto from "node:crypto";
 
 export type Db = Database.Database;
 
-const SCHEMA_VERSION = 11;
+const SCHEMA_VERSION = 12;
 
 const SCHEMA = /* sql */ `
 CREATE TABLE households (
@@ -362,6 +362,50 @@ function migrate(db: Db) {
       );
       ALTER TABLE events ADD COLUMN source_sub_id TEXT;
       CREATE INDEX idx_events_source_sub ON events(source_sub_id);
+    `);
+  }
+  if (version < 12) {
+    // Family-to-family messages + sealed file transfers. One thread per
+    // connected family (household-level; per-person DMs are a future step).
+    // Parents always see every thread — parental visibility is structural.
+    db.exec(/* sql */ `
+      CREATE TABLE fed_messages (
+        id TEXT PRIMARY KEY,
+        peer_id TEXT NOT NULL,
+        direction TEXT NOT NULL CHECK (direction IN ('in','out')),
+        sender TEXT NOT NULL,
+        sender_member_id TEXT,
+        kind TEXT NOT NULL CHECK (kind IN ('text','file')),
+        body TEXT NOT NULL DEFAULT '',
+        transfer_id TEXT,
+        created_at INTEGER NOT NULL
+      );
+      CREATE INDEX idx_fed_messages_peer ON fed_messages(peer_id, created_at);
+
+      CREATE TABLE fed_transfers (
+        id TEXT PRIMARY KEY,
+        peer_id TEXT NOT NULL,
+        direction TEXT NOT NULL CHECK (direction IN ('in','out')),
+        name TEXT NOT NULL,
+        size INTEGER NOT NULL,
+        sha256 TEXT NOT NULL,
+        chunk_size INTEGER NOT NULL,
+        chunks INTEGER NOT NULL,
+        status TEXT NOT NULL CHECK (status IN ('offered','sending','receiving','done','declined','failed')),
+        progress INTEGER NOT NULL DEFAULT 0,
+        dest TEXT,
+        local_path TEXT,
+        error TEXT,
+        created_at INTEGER NOT NULL,
+        updated_at INTEGER NOT NULL
+      );
+
+      CREATE TABLE message_reads (
+        member_id TEXT NOT NULL,
+        peer_id TEXT NOT NULL,
+        last_seen_at INTEGER NOT NULL,
+        PRIMARY KEY (member_id, peer_id)
+      );
     `);
   }
   db.pragma(`user_version = ${SCHEMA_VERSION}`);

@@ -8,7 +8,7 @@ start here (and confirm priorities with the project owner first).
 
 | Feature | State | Seam / plan |
 | --- | --- | --- |
-| **Cross-family file sharing** from the NAS `files/` folder | NAS photo source SHIPPED (nas plugin + unified /api/photos source); `files/` folder is created but sharing isn't built | Ride the federation sealed channel; see wiki/immich.md |
+| **Cross-family file sharing** | **SHIPPED v12**: message threads per family + sealed chunked transfers (offer/accept, save to NAS `files/` or app folder, download). Still open: sending straight FROM a NAS folder browser (today you attach from the device), per-person DMs, group chats, sharing lists/events inside a thread | wiki/federation.md §Messages |
 | External calendars & photos (ICS subs → iCloud CalDAV → Google Calendar OAuth → Google Photos Picker, iCloud shared albums) | **ICS subscriptions SHIPPED** (`core.calsync`, Settings → Other calendars, read-only imports w/ filters); the OAuth/CalDAV rungs are next | `docs/integrations-plan.md` (note: Google killed third-party full-library Photos access in 2025 — Picker/album mirror only) |
 | AI assistant plugin (chat box, "magic add", recall answers) | Not started (Phase 2 of original plan) | Provider-agnostic adapter (Ollama/Anthropic/OpenAI); local-first, **no external APIs by default**; reuse REST services + audit grounding |
 | Voice control (wake word + STT) | Not started (Phase 3) | **Whisper preferred**; feeds the Phase-2 intent parser |

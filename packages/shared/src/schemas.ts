@@ -44,7 +44,7 @@ export type CredentialType = z.infer<typeof credentialTypeSchema>;
 export const PATTERN_ANIMALS = ["🐱", "🐶", "🐰", "🐴", "🐐", "🐸", "🐼", "🦊", "🐢"] as const;
 export const PATTERN_REGEX = /^pat:[0-8]{4}$/;
 
-export const grantSchema = z.enum(["event.manage", "task.manage", "checklist.manage"]);
+export const grantSchema = z.enum(["event.manage", "task.manage", "checklist.manage", "messages.use"]);
 
 export const memberSchema = z.object({
   id: z.string(),
@@ -176,6 +176,48 @@ export type EventInstance = z.infer<typeof eventInstanceSchema>;
 
 export const editScopeSchema = z.enum(["single", "future", "all"]);
 export type EditScope = z.infer<typeof editScopeSchema>;
+
+// ---------- Family messages & file transfers ----------
+
+/** One sealed file moving between two families (chunked, resumable). */
+export const fedTransferSchema = z.object({
+  id: z.string(),
+  peerId: z.string(),
+  direction: z.enum(["in", "out"]),
+  name: z.string(),
+  size: z.number().int(),
+  sha256: z.string(),
+  chunks: z.number().int(),
+  status: z.enum(["offered", "sending", "receiving", "done", "declined", "failed"]),
+  /** Chunks moved so far — progress = this / chunks. */
+  progress: z.number().int(),
+  /** Where an accepted file landed: 'nas' or 'app' (null until accepted). */
+  dest: z.enum(["nas", "app"]).nullable(),
+  error: z.string().nullable(),
+  createdAt: z.number(),
+});
+export type FedTransfer = z.infer<typeof fedTransferSchema>;
+
+export const fedMessageSchema = z.object({
+  id: z.string(),
+  peerId: z.string(),
+  direction: z.enum(["in", "out"]),
+  /** Display name: local member (out) or "Name (Family)" (in). */
+  sender: z.string(),
+  kind: z.enum(["text", "file"]),
+  body: z.string(),
+  transferId: z.string().nullable(),
+  createdAt: z.number(),
+});
+export type FedMessage = z.infer<typeof fedMessageSchema>;
+
+export const messageThreadSchema = z.object({
+  peerId: z.string(),
+  peerName: z.string(),
+  lastMessage: fedMessageSchema.nullable(),
+  unread: z.number().int(),
+});
+export type MessageThread = z.infer<typeof messageThreadSchema>;
 
 // ---------- Calendar subscriptions (ICS feeds) ----------
 

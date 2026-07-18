@@ -44,6 +44,8 @@ export async function buildApp(options: BuildOptions): Promise<{ app: FastifyIns
   const app = Fastify({ logger: options.logger ?? true, trustProxy: true });
   await app.register(cookie);
   await app.register(websocket);
+  // Raw uploads (family-to-family file sends) arrive as octet-stream buffers.
+  app.addContentTypeParser("application/octet-stream", { parseAs: "buffer" }, (_req, body, done) => done(null, body));
 
   const log = (msg: string) => app.log.info(msg);
   const bus = createBus((event, err) => app.log.error({ err }, `bus handler for ${event} failed`));

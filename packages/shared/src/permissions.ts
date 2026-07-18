@@ -11,12 +11,13 @@ export type Action =
   | "settings.manage";
 
 /** Extra capabilities a parent can grant a kid (the family "rwx"). */
-export type Grant = "event.manage" | "task.manage" | "checklist.manage";
+export type Grant = "event.manage" | "task.manage" | "checklist.manage" | "messages.use";
 
 export const GRANTS: { key: Grant; label: string }[] = [
   { key: "event.manage", label: "Add & edit calendar events" },
   { key: "task.manage", label: "Add & edit chores" },
   { key: "checklist.manage", label: "Create & manage lists" },
+  { key: "messages.use", label: "Message other families (parents can read everything)" },
 ];
 
 const CHILD_ALLOWED: ReadonlySet<Action> = new Set([
