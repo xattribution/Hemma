@@ -79,9 +79,12 @@ cp deploy/install.sh release/install.sh
 # ---------- 4. docker image ----------
 if command -v docker >/dev/null 2>&1; then
   if [ "$PUSH_IMAGE" = 1 ]; then
-    say "building + pushing $IMAGE:$VERSION (amd64 + arm64)"
+    # arm64 builds run under QEMU on x86 hosts and are SLOW (~15 min first
+    # time; cached after). Skip ARM with: HEMMA_PLATFORMS=linux/amd64
+    PLATFORMS="${HEMMA_PLATFORMS:-linux/amd64,linux/arm64}"
+    say "building + pushing $IMAGE:$VERSION ($PLATFORMS)"
     docker buildx create --use --name hemma-builder >/dev/null 2>&1 || true
-    docker buildx build --platform linux/amd64,linux/arm64 \
+    docker buildx build --platform "$PLATFORMS" \
       -t "$IMAGE:$VERSION" -t "$IMAGE:latest" --push .
   else
     say "building the Docker image locally (add --push-image to publish to ghcr)"
