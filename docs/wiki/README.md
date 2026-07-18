@@ -1,13 +1,13 @@
-# Hemma wiki — the full context handoff
+# Sett wiki — the full context handoff
 
-**Product name: Hemma** (Swedish: "at home"). **The app was originally
-named Coord** — if you're applying updates and see "coord" in code, that is
-NOT stale: internal identifiers stay `coord` deliberately (`coord.db`,
+**Product name: Sett** (a badger family's den; the owner is tinbadger.com).
+**The app was originally named Coord, then briefly Hemma** — if you're
+applying updates and see "coord" in code, that is NOT stale: internal identifiers stay `coord` deliberately (`coord.db`,
 `coord-data` volume, `coord_session` cookie, `coord.*` storage keys,
 `@coord/*` packages, `COORD_URL`/`COORD_TOKEN` env — renaming any of them
 breaks live deployments). The GitHub repo itself WAS renamed to
-`xattribution/Hemma` (old `coord` URLs redirect; container image is
-`ghcr.io/xattribution/hemma`). Brand only user-visible surfaces. Full rule
+`xattribution/Sett` (old `coord` URLs redirect; container image is
+`ghcr.io/xattribution/sett`). Brand only user-visible surfaces. Full rule
 in the root `CLAUDE.md`.
 
 This wiki exists so that a **new engineer or AI agent can pick up the project
@@ -17,7 +17,7 @@ depends on, which UI surfaces it needs, and what is deliberately unfinished.
 app itself — that one is for AIs *driving* a live Coord, this wiki is for
 anyone *building* Coord.)
 
-## What Hemma is
+## What Sett is
 
 A self-hosted family coordination hub: classic calendar, kids' chores with
 checkable steps, shared shopping/packing/meal lists, always-on wall displays,

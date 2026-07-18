@@ -92,7 +92,7 @@ function VersionFooter() {
   });
   return (
     <p className="pb-2 text-center text-sm font-semibold text-ink-soft">
-      Hemma {data?.version && data.version !== "dev" ? `v${data.version}` : "(dev)"} — your family's data lives on your own server. 💛
+      Sett {data?.version && data.version !== "dev" ? `v${data.version}` : "(dev)"} — your family's data lives on your own server. 💛
     </p>
   );
 }
@@ -327,7 +327,7 @@ function NotificationsSection() {
   const { state, enable, disable } = usePush();
   const label = {
     unsupported: "Push isn't supported in this browser — in-app reminders still work.",
-    "needs-install": "On iPhone/iPad: add Hemma to your Home Screen first (Share → Add to Home Screen), then enable reminders here.",
+    "needs-install": "On iPhone/iPad: add Sett to your Home Screen first (Share → Add to Home Screen), then enable reminders here.",
     denied: "Notifications are blocked in your browser settings.",
     off: "Get a nudge on this device before events and chores.",
     on: "Reminders are on for this device. 🎉",
@@ -378,7 +378,7 @@ function PluginsSection() {
     <section className="rounded-card bg-card p-4 shadow-card">
       <h3 className="mb-2 flex items-center gap-2 font-extrabold"><Puzzle size={18} /> Plugins</h3>
       <p className="mb-3 text-sm font-semibold text-ink-soft">
-        Hemma grows with your family — AI assistant, voice, email import and family-to-family sharing will appear here.
+        Sett grows with your family — AI assistant, voice, email import and family-to-family sharing will appear here.
       </p>
       <div className="space-y-2">
         {(plugins ?? []).map((plugin) => (

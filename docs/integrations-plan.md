@@ -23,7 +23,7 @@ calendar as **private to me** — pairs with the visibility system).
 | — | Immich | **Done** | Shipped (search/random + album filter, current API). |
 | — | NAS folder | **Done** | Shipped (bind-mount, photos/ + files/). |
 | 1 | **iCloud Shared Album** (public website link) | **Medium** | Apple has **no photos API at all**. The one workable path: a Shared Album with "Public Website" on exposes a JSON feed that many tools consume. Unofficial but long-stable; read-only; fits the source-plugin interface exactly. Full-library iCloud (icloudpd-style reverse-engineered auth + 2FA) is fragile and not something to bundle. |
-| 2 | **Google Photos** | **Medium, capped by policy** | Since **March 2025 Google removed third-party full-library read** from the Library API — apps can only read content they created or content the user hands over via the **Picker API**. So "slideshow from my whole Google Photos" is impossible for ANY third-party app now. What we can build: user picks an album/photos via Google's Picker (or a shared album), Hemma mirrors that selection. Needs per-family OAuth client like Google Calendar. |
+| 2 | **Google Photos** | **Medium, capped by policy** | Since **March 2025 Google removed third-party full-library read** from the Library API — apps can only read content they created or content the user hands over via the **Picker API**. So "slideshow from my whole Google Photos" is impossible for ANY third-party app now. What we can build: user picks an album/photos via Google's Picker (or a shared album), Sett mirrors that selection. Needs per-family OAuth client like Google Calendar. |
 
 ## Recommended order
 

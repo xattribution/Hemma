@@ -191,7 +191,7 @@ function NasBlock() {
       <p className="mb-2 text-sm font-semibold text-ink-soft">
         Mount your NFS/SMB share on the server and bind it into the container
         (e.g. <code className="rounded bg-cream px-1">/mnt/family-nas:/nas</code> in docker-compose.yml), then point
-        Hemma at it. Hemma creates <code className="rounded bg-cream px-1">photos/</code> for slideshows and{" "}
+        Sett at it. Sett creates <code className="rounded bg-cream px-1">photos/</code> for slideshows and{" "}
         <code className="rounded bg-cream px-1">files/</code> for family file sharing (coming with federation).
       </p>
       <div className="flex flex-wrap items-center gap-2">

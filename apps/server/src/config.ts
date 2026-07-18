@@ -1,7 +1,7 @@
 import fs from "node:fs";
 import path from "node:path";
 
-/** The released Hemma version. Stamped into the root package.json by
+/** The released Sett version. Stamped into the root package.json by
     scripts/release.sh; the standalone bundles ship a package.json next to
     server.mjs. Dev checkouts show whatever was released last. */
 function readVersion(): string {
@@ -20,7 +20,7 @@ function readVersion(): string {
 }
 
 export const config = {
-  version: process.env.HEMMA_VERSION ?? readVersion(),
+  version: process.env.SETT_VERSION ?? readVersion(),
   // High default to stay clear of commonly-used dev ports (3000 etc.).
   port: Number(process.env.PORT ?? 49733),
   host: process.env.HOST ?? "0.0.0.0",

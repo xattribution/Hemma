@@ -1,18 +1,18 @@
 #!/usr/bin/env bash
-# Hemma — guided Docker setup for the family's home server.
+# Sett — guided Docker setup for the family's home server.
 #
-#   curl -fsSL https://raw.githubusercontent.com/xattribution/Hemma/HEAD/deploy/install.sh | bash
+#   curl -fsSL https://raw.githubusercontent.com/xattribution/Sett/HEAD/deploy/install.sh | bash
 #   (or download it, look inside, and run: bash install.sh)
 #
 # Asks a few questions in plain language, writes a docker-compose.yml, and
-# starts Hemma. Re-run it any time: it finds your existing setup and offers
+# starts Sett. Re-run it any time: it finds your existing setup and offers
 # an update instead (your family's data always stays put in a Docker volume).
 #
 #   --build   build the image from source instead of pulling the published one
 set -euo pipefail
 
-IMAGE="ghcr.io/xattribution/hemma:latest"
-REPO="https://github.com/xattribution/Hemma"
+IMAGE="ghcr.io/xattribution/sett:latest"
+REPO="https://github.com/xattribution/Sett"
 BUILD_FROM_SOURCE=0
 [ "${1:-}" = "--build" ] && BUILD_FROM_SOURCE=1
 
@@ -20,20 +20,20 @@ bold()  { printf '\033[1m%s\033[0m\n' "$*"; }
 say()   { printf '%s\n' "$*"; }
 ask()   { # ask "question" "default" -> REPLY  (reads /dev/tty so `curl | bash` works)
   local q="$1" d="${2:-}" src="/dev/stdin"
-  [ -r /dev/tty ] && [ "${HEMMA_NO_TTY:-}" != 1 ] && src="/dev/tty"
+  [ -r /dev/tty ] && [ "${SETT_NO_TTY:-}" != 1 ] && src="/dev/tty"
   if [ -n "$d" ]; then read -rp "$q [$d]: " REPLY < "$src" || true; REPLY="${REPLY:-$d}";
   else read -rp "$q: " REPLY < "$src" || true; fi
 }
 lan_ip() { hostname -I 2>/dev/null | awk '{print $1}' || echo "<this machine's IP>"; }
 
-bold "🏡 Hemma setup"
+bold "🦡 Sett setup"
 say  "A few questions and your family server is running. Press ENTER to accept"
 say  "the suggestion in [brackets]. Nothing leaves this machine."
 echo
 
 # ---------- prerequisites ----------
 if ! command -v docker >/dev/null 2>&1; then
-  say "Docker isn't installed yet. It's the one thing Hemma needs."
+  say "Docker isn't installed yet. It's the one thing Sett needs."
   say "Easiest install (official script):  curl -fsSL https://get.docker.com | sh"
   say "Then run me again."
   exit 1
@@ -45,12 +45,12 @@ if ! docker compose version >/dev/null 2>&1; then
 fi
 
 # ---------- where ----------
-ask "Where should Hemma's setup files live?" "$HOME/hemma"
+ask "Where should Sett's setup files live?" "$HOME/sett"
 DIR="$REPLY"; mkdir -p "$DIR"
 
 if [ -f "$DIR/docker-compose.yml" ] && docker compose -f "$DIR/docker-compose.yml" ps --quiet app >/dev/null 2>&1; then
   echo
-  bold "Hemma is already set up in $DIR."
+  bold "Sett is already set up in $DIR."
   ask "Update it to the latest version now? (y/n)" "y"
   if [ "$REPLY" = "y" ] || [ "$REPLY" = "Y" ]; then
     (cd "$DIR" && docker compose pull && docker compose up -d)
@@ -60,7 +60,7 @@ if [ -f "$DIR/docker-compose.yml" ] && docker compose -f "$DIR/docker-compose.ym
 fi
 
 # ---------- questions ----------
-ask "Which port should Hemma answer on? (fine to keep the default)" "49733"
+ask "Which port should Sett answer on? (fine to keep the default)" "49733"
 PORT="$REPLY"
 
 DEFAULT_TZ="$(cat /etc/timezone 2>/dev/null || timedatectl show -p Timezone --value 2>/dev/null || echo America/New_York)"
@@ -70,7 +70,7 @@ TZ_VAL="$REPLY"
 echo
 say "Optional: a NAS folder for photos & family files. If your NAS share is"
 say "already mounted on this machine (e.g. /mnt/nas), point me at a folder on"
-say "it and Hemma will keep photos/ and files/ inside. Leave empty to skip —"
+say "it and Sett will keep photos/ and files/ inside. Leave empty to skip —"
 say "you can add it later by re-running me."
 ask "NAS folder on this machine (empty = skip)" ""
 NAS="$REPLY"
@@ -81,15 +81,15 @@ if [ -n "$NAS" ] && [ ! -d "$NAS" ]; then
 fi
 
 echo
-say "Optional: a public web address (like hemma.yourfamily.com). Only needed if"
-say "you want to reach Hemma from OUTSIDE the house without a VPN. You'd point"
+say "Optional: a public web address (like sett.yourfamily.com). Only needed if"
+say "you want to reach Sett from OUTSIDE the house without a VPN. You'd point"
 say "a reverse proxy (Nginx Proxy Manager, Caddy…) at this machine, port $PORT,"
 say "with WebSocket support on. Inside the house, the plain address always works."
 ask "Public address (empty = home use only)" ""
 PUBLIC_HOST="$REPLY"
 
 echo
-say "Optional: restoring a family? If you have a Hemma backup file"
+say "Optional: restoring a family? If you have a Sett backup file"
 say "(coord-backup-….db from Settings → Backup), give me its path and this"
 say "server starts as that family. Leave empty for a fresh start."
 ask "Backup file to restore (empty = fresh start)" ""
@@ -114,9 +114,9 @@ NAS_LINE=""
 [ -n "$NAS" ] && NAS_LINE="      - $NAS:/nas"
 
 cat > "$DIR/docker-compose.yml" <<YML
-# Hemma family server — written by install.sh $(date +%F)
+# Sett family server — written by install.sh $(date +%F)
 # Update any time: re-run install.sh, or: docker compose pull && docker compose up -d
-name: hemma
+name: sett
 services:
   app:
     $APP_IMAGE_LINES
@@ -138,13 +138,13 @@ YML
 # ---------- restore, pull, start ----------
 if [ -n "$RESTORE" ]; then
   say "Restoring your family from $(basename "$RESTORE")…"
-  docker volume create hemma_coord-data >/dev/null
-  docker run --rm -v hemma_coord-data:/data -v "$(cd "$(dirname "$RESTORE")" && pwd)":/src:ro \
+  docker volume create sett_coord-data >/dev/null
+  docker run --rm -v sett_coord-data:/data -v "$(cd "$(dirname "$RESTORE")" && pwd)":/src:ro \
     alpine sh -c "cp /src/$(basename "$RESTORE") /data/coord.db && rm -f /data/coord.db-wal /data/coord.db-shm"
 fi
 
 say ""
-say "Starting Hemma (first time can take a few minutes)…"
+say "Starting Sett (first time can take a few minutes)…"
 (cd "$DIR" && docker compose up -d)
 
 # ---------- wait for health ----------
@@ -156,7 +156,7 @@ done
 echo
 if [ "${HEALTHY:-0}" = 1 ]; then
   IP="$(lan_ip)"
-  bold "✔ Hemma is running!"
+  bold "✔ Sett is running!"
   say  ""
   say  "  On this machine:        http://localhost:$PORT"
   say  "  Phones & tablets here:  http://$IP:$PORT"
@@ -166,6 +166,6 @@ if [ "${HEALTHY:-0}" = 1 ]; then
   say  "Afterwards, Settings → Phones & tablets has a QR code for the Android app."
   [ -n "$NAS" ] && say "For NAS photos: Settings → Photos → NAS folder → /nas"
 else
-  say "Hemma started but isn't answering yet. Check with:"
+  say "Sett started but isn't answering yet. Check with:"
   say "  cd $DIR && docker compose logs -f app"
 fi

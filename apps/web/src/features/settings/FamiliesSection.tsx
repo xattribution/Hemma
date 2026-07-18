@@ -44,7 +44,7 @@ export function FamiliesSection() {
     <section className="rounded-card bg-card p-4 shadow-card">
       <h3 className="mb-2 flex items-center gap-2 font-extrabold"><HeartHandshake size={18} /> Family connections</h3>
       <p className="mb-3 text-sm font-semibold text-ink-soft">
-        Share chosen lists and events with grandma's or your brother's Hemma. Everything between
+        Share chosen lists and events with grandma's or your brother's Sett. Everything between
         families is end-to-end encrypted; the optional connection server only relays sealed blobs
         and keeps nothing.
       </p>
@@ -150,7 +150,7 @@ export function FamiliesSection() {
             <p className="text-xs font-semibold text-ink-soft">
               The connection server only relays sealed, encrypted blobs — it can't read anything.
               Prefer running your own? It's one command on any small VPS:{" "}
-              <a href="https://github.com/xattribution/Hemma/tree/claude/family-coordination-calendar-bs4zqo/apps/relay"
+              <a href="https://github.com/xattribution/Sett/tree/claude/family-coordination-calendar-bs4zqo/apps/relay"
                 target="_blank" rel="noreferrer" className="text-coral underline">
                 self-host guide on GitHub
               </a>{" "}
@@ -165,7 +165,7 @@ export function FamiliesSection() {
           <p className="mb-2 text-center text-5xl font-extrabold tracking-widest text-coral">{code}</p>
           <p className="text-center text-sm font-semibold text-ink-soft">
             Tell the other family this code (good for 10 minutes). They enter it under
-            Settings → Family connections → Enter a code{data.relayEnabled ? "." : ", along with your Hemma address."}
+            Settings → Family connections → Enter a code{data.relayEnabled ? "." : ", along with your Sett address."}
           </p>
         </Modal>
       )}
@@ -198,7 +198,7 @@ function ConnectModal({ relayEnabled, onClose }: { relayEnabled: boolean; onClos
             value={code} onChange={(e) => setCode(e.target.value.toUpperCase())} placeholder="TIGER-42" required maxLength={12} />
         </div>
         <div>
-          <label className={labelCls}>Their Hemma address {relayEnabled ? "(leave blank to use the connection server)" : ""}</label>
+          <label className={labelCls}>Their Sett address {relayEnabled ? "(leave blank to use the connection server)" : ""}</label>
           <input className={inputCls} type="url" value={url} onChange={(e) => setUrl(e.target.value)}
             placeholder="https://coord.theirfamily.com" required={!relayEnabled} />
         </div>

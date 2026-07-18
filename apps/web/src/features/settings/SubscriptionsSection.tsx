@@ -38,7 +38,7 @@ export function SubscriptionsSection() {
       <p className="mb-3 text-sm font-semibold text-ink-soft">
         Already keep a calendar somewhere else — the soccer team's schedule, the
         school calendar, your work calendar? Paste its link here and it shows up
-        in Hemma, and stays up to date by itself. Hemma only reads it: nothing
+        in Sett, and stays up to date by itself. Sett only reads it: nothing
         is ever changed or sent back.
       </p>
 

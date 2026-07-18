@@ -40,7 +40,7 @@ export function DashboardPage() {
   const config: DisplayConfig = me.data?.kind === "device" ? me.data.config : DEFAULT_DISPLAY_CONFIG;
 
   if (!me.data) {
-    return <div className="flex min-h-dvh items-center justify-center text-5xl"><span className="animate-pop">🏡</span></div>;
+    return <div className="flex min-h-dvh items-center justify-center text-5xl"><span className="animate-pop">🦡</span></div>;
   }
 
   return (
@@ -48,7 +48,7 @@ export function DashboardPage() {
       <div className="min-h-dvh bg-cream p-4 sm:p-6">
         <header className="mb-4 flex items-end justify-between">
           <div>
-            <h1 className="text-2xl font-extrabold sm:text-3xl">🏡 {me.data.household.name}</h1>
+            <h1 className="text-2xl font-extrabold sm:text-3xl">🦡 {me.data.household.name}</h1>
             <p className="font-semibold text-ink-soft">{format(now, "EEEE, MMMM d")}</p>
           </div>
           <div className="flex items-start gap-3 text-right">
@@ -218,7 +218,7 @@ function DisplayCards({ config }: { config: DisplayConfig }) {
   const { ensure } = useElevation();
 
   if (!data) {
-    return <div className="flex h-64 items-center justify-center text-5xl"><span className="animate-pop">🏡</span></div>;
+    return <div className="flex h-64 items-center justify-center text-5xl"><span className="animate-pop">🦡</span></div>;
   }
 
   const columns = [config.showEvents, config.showChores, config.showLists].filter(Boolean).length || 1;

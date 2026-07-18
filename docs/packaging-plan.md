@@ -14,7 +14,7 @@ Three tiers, built in this order (each reuses the previous):
 `deploy/install.sh` (curl-able, prompts for install dir/port/timezone/NAS
 folder/public hostname/restore-from-backup) + multi-arch GHCR image pushed
 by `scripts/release.sh --push-image`. **Also shipped beyond the plan:**
-standalone server bundles — a Windows zip (`Start Hemma.bat`, own Node
+standalone server bundles — a Windows zip (`Start Sett.bat`, own Node
 runtime, no Docker) and a Linux tarball (`start.sh` + systemd template) —
 built by `scripts/build-server-bundle.sh` and attached to every release.
 The Windows zip covers most of Tier 2's value (a Windows PC as the family

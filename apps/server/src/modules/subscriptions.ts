@@ -83,7 +83,7 @@ async function fetchFeed(url: string): Promise<string> {
   try {
     res = await fetch(url, {
       signal: AbortSignal.timeout(15_000),
-      headers: { accept: "text/calendar, text/plain, */*", "user-agent": "Hemma/1.0 (calendar subscription)" },
+      headers: { accept: "text/calendar, text/plain, */*", "user-agent": "Sett/1.0 (calendar subscription)" },
       redirect: "follow",
     });
   } catch {

@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Build a standalone Hemma server bundle — no Node, no Docker, no pnpm needed
+# Build a standalone Sett server bundle — no Node, no Docker, no pnpm needed
 # on the target machine. The bundle is: an official portable Node runtime,
 # the server compiled to one file (esbuild), the built web app, and
 # better-sqlite3 (the only native module) with the right prebuilt binary.
@@ -8,7 +8,7 @@
 #   scripts/build-server-bundle.sh win-x64   [outdir]
 #
 # Run from the repo root on a Linux machine (cross-builds the Windows zip).
-# Produces hemma-server-<version>-<platform>.tar.gz / .zip in <outdir>
+# Produces sett-server-<version>-<platform>.tar.gz / .zip in <outdir>
 # (default: release/).
 set -euo pipefail
 
@@ -96,13 +96,13 @@ esac
 # ---------- 4. web app + version stamp + launchers + README ----------
 cp -r apps/web/dist "$STAGE/web"
 # the server reads its displayed version from the package.json beside it
-printf '{ "name": "hemma-server", "private": true, "version": "%s" }\n' "$VERSION" > "$STAGE/package.json"
+printf '{ "name": "sett-server", "private": true, "version": "%s" }\n' "$VERSION" > "$STAGE/package.json"
 
 if [ "$PLATFORM" = "win-x64" ]; then
   # CRLF so Notepad users can read them
-  printf '@echo off\r\ncd /d "%%~dp0"\r\nset "WEB_DIST=%%~dp0web"\r\nset "DATABASE_PATH=%%~dp0data\\coord.db"\r\necho Hemma is starting ... leave this window open.\r\necho Open http://localhost:49733 in a browser on this computer,\r\necho or http://THIS-COMPUTERS-IP:49733 from phones and tablets.\r\n.\\node.exe server.mjs\r\npause\r\n' > "$STAGE/Start Hemma.bat"
-  printf 'HEMMA — your family server (Windows)\r\n=====================================\r\n\r\n1. Unzip this folder anywhere (Documents is fine).\r\n2. Double-click "Start Hemma.bat". Windows may ask about the network:\r\n   choose Allow (private networks) so phones in the house can reach it.\r\n3. On this computer, open http://localhost:49733 and finish setup.\r\n4. On phones/tablets, use http://<this computer'"'"'s IP>:49733 —\r\n   find the IP with: Settings > Network > Properties (IPv4 address).\r\n\r\nEverything lives in the "data" folder next to this file. Back up your\r\nfamily = copy data\\coord.db somewhere safe (or use Settings > Backup\r\nin the app). To update Hemma: download the new zip, unzip it, and move\r\nyour old "data" folder into it.\r\n\r\nTip: to start Hemma automatically when the computer turns on, put a\r\nshortcut to "Start Hemma.bat" in shell:startup (press Win+R, type\r\nshell:startup, press Enter, drag the shortcut in).\r\n' > "$STAGE/README.txt"
-  out_name="hemma-server-$VERSION-windows-x64"
+  printf '@echo off\r\ncd /d "%%~dp0"\r\nset "WEB_DIST=%%~dp0web"\r\nset "DATABASE_PATH=%%~dp0data\\coord.db"\r\necho Sett is starting ... leave this window open.\r\necho Open http://localhost:49733 in a browser on this computer,\r\necho or http://THIS-COMPUTERS-IP:49733 from phones and tablets.\r\n.\\node.exe server.mjs\r\npause\r\n' > "$STAGE/Start Sett.bat"
+  printf 'SETT — your family server (Windows)\r\n=====================================\r\n\r\n1. Unzip this folder anywhere (Documents is fine).\r\n2. Double-click "Start Sett.bat". Windows may ask about the network:\r\n   choose Allow (private networks) so phones in the house can reach it.\r\n3. On this computer, open http://localhost:49733 and finish setup.\r\n4. On phones/tablets, use http://<this computer'"'"'s IP>:49733 —\r\n   find the IP with: Settings > Network > Properties (IPv4 address).\r\n\r\nEverything lives in the "data" folder next to this file. Back up your\r\nfamily = copy data\\coord.db somewhere safe (or use Settings > Backup\r\nin the app). To update Sett: download the new zip, unzip it, and move\r\nyour old "data" folder into it.\r\n\r\nTip: to start Sett automatically when the computer turns on, put a\r\nshortcut to "Start Sett.bat" in shell:startup (press Win+R, type\r\nshell:startup, press Enter, drag the shortcut in).\r\n' > "$STAGE/README.txt"
+  out_name="sett-server-$VERSION-windows-x64"
   say "zipping $out_name"
   (cd "$STAGE" && zip -qr9 "$OUT/$out_name.zip" .)
 else
@@ -111,29 +111,29 @@ else
 cd "$(dirname "$0")"
 export WEB_DIST="$PWD/web"
 export DATABASE_PATH="$PWD/data/coord.db"
-echo "Hemma is starting — open http://localhost:49733 (or this machine's IP from phones)."
+echo "Sett is starting — open http://localhost:49733 (or this machine's IP from phones)."
 exec ./node server.mjs
 SH
   chmod +x "$STAGE/start.sh" "$STAGE/node"
-  cat > "$STAGE/hemma.service" <<'UNIT'
-# Run Hemma at boot (Linux with systemd):
+  cat > "$STAGE/sett.service" <<'UNIT'
+# Run Sett at boot (Linux with systemd):
 #   1. Edit the two paths below to where you unpacked this folder.
-#   2. sudo cp hemma.service /etc/systemd/system/
-#   3. sudo systemctl enable --now hemma
+#   2. sudo cp sett.service /etc/systemd/system/
+#   3. sudo systemctl enable --now sett
 [Unit]
-Description=Hemma family server
+Description=Sett family server
 After=network.target
 
 [Service]
-WorkingDirectory=/home/YOU/hemma-server
-ExecStart=/home/YOU/hemma-server/start.sh
+WorkingDirectory=/home/YOU/sett-server
+ExecStart=/home/YOU/sett-server/start.sh
 Restart=on-failure
 
 [Install]
 WantedBy=multi-user.target
 UNIT
   cat > "$STAGE/README.txt" <<'TXT'
-HEMMA — your family server (Linux)
+SETT — your family server (Linux)
 ==================================
 
 1. Unpack this folder anywhere.
@@ -146,9 +146,9 @@ family = copy data/coord.db somewhere safe (or use Settings > Backup in
 the app). To update: unpack the new release and move your old "data"
 folder into it.
 
-To start at boot, see hemma.service (instructions inside the file).
+To start at boot, see sett.service (instructions inside the file).
 TXT
-  out_name="hemma-server-$VERSION-linux-x64"
+  out_name="sett-server-$VERSION-linux-x64"
   say "packing $out_name"
   tar -C "$STAGE" -czf "$OUT/$out_name.tar.gz" .
 fi

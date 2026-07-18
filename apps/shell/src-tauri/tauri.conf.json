@@ -1,15 +1,15 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
-  "productName": "Hemma",
+  "productName": "Sett",
   "version": "1.3.0",
-  "identifier": "com.tinbadger.hemma",
+  "identifier": "com.tinbadger.sett",
   "build": {
     "frontendDist": "../ui"
   },
   "app": {
     "windows": [
       {
-        "title": "Hemma",
+        "title": "Sett",
         "width": 1200,
         "height": 800,
         "minWidth": 360,

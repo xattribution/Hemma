@@ -27,12 +27,12 @@ Three "soccer-mom" install paths for the home server, all built by
 1. **Guided Docker installer** — `deploy/install.sh` (curl-able). Prompts:
    install dir, port, timezone, optional NAS bind (`/nas`), optional public
    hostname (prints proxy instructions only), optional restore-from-backup
-   (copies the .db into the `hemma_coord-data` volume via a throwaway
+   (copies the .db into the `sett_coord-data` volume via a throwaway
    alpine container before first start). Writes `docker-compose.yml`
-   (project name `hemma`), starts, waits on `/api/health`, prints LAN
+   (project name `sett`), starts, waits on `/api/health`, prints LAN
    addresses. Re-running = update (pull + up). Reads prompts from
    `/dev/tty` so `curl | bash` works. Default image
-   `ghcr.io/xattribution/hemma:latest` (pushed by release.sh with
+   `ghcr.io/xattribution/sett:latest` (pushed by release.sh with
    `--push-image`, multi-arch amd64+arm64 via buildx); `--build` builds
    from a source clone instead.
 2. **Standalone server bundles** — `scripts/build-server-bundle.sh
@@ -41,9 +41,9 @@ Three "soccer-mom" install paths for the home server, all built by
    portable Node runtime (pinned `NODE_VERSION`, ABI 127), the built web
    dist, and `node_modules/better-sqlite3` (+bindings) carrying the right
    prebuilt binding — the Windows zip swaps in the official win32-x64
-   prebuild from better-sqlite3's releases. Launchers: `Start Hemma.bat` /
+   prebuild from better-sqlite3's releases. Launchers: `Start Sett.bat` /
    `start.sh` set `WEB_DIST`/`DATABASE_PATH` next to themselves (data/
-   folder = the backup); Linux bundle includes a `hemma.service` template.
+   folder = the backup); Linux bundle includes a `sett.service` template.
    Verified end-to-end on Linux (unpack → start.sh → health + setup).
 3. **Client apps** — the existing tag-triggered CI (`apps.yml`).
 
@@ -52,7 +52,7 @@ finishes, so tauri-action attaches the desktop/APK bundles to the same
 release (~30 min later). Release assets: both server bundles, install.sh,
 SHA256SUMS.txt. The web app's **Settings → Phones & tablets**
 (`AppsSection.tsx`) shows the server address + a QR pointing at
-`releases/latest/download/hemma-android.apk` — that asset name is stable,
+`releases/latest/download/sett-android.apk` — that asset name is stable,
 so the QR never goes stale.
 
 ## Relay (`apps/relay` + `deploy/relay`)

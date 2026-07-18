@@ -21,7 +21,7 @@ const cookieOf = (res: { headers: Record<string, unknown> }) =>
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
 beforeAll(async () => {
-  filesDir = fs.mkdtempSync(path.join(os.tmpdir(), "hemma-files-"));
+  filesDir = fs.mkdtempSync(path.join(os.tmpdir(), "sett-files-"));
   process.env.FILES_DIR = filesDir;
   ({ app: A } = await buildApp({ dbPath: ":memory:", logger: false }));
   ({ app: B } = await buildApp({ dbPath: ":memory:", logger: false }));

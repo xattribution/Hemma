@@ -1,5 +1,5 @@
 /**
- * Coord MCP server — gives AI assistants structured tools over a Coord
+ * Sett MCP server — gives AI assistants structured tools over a Sett
  * family-calendar instance (events, chores, lists, search, history).
  *
  * Env:
@@ -79,7 +79,7 @@ async function resolveList(ref: string): Promise<Checklist> {
 
 const ok = (data: unknown) => ({ content: [{ type: "text" as const, text: JSON.stringify(data, null, 1) }] });
 
-const server = new McpServer({ name: "hemma", version: "0.1.0" });
+const server = new McpServer({ name: "sett", version: "0.1.0" });
 
 // ---------- discovery ----------
 
@@ -323,7 +323,7 @@ server.tool(
 
 server.tool(
   "share_photo",
-  "Mint a PUBLIC 7-day link for a photo (asset_id from get_screen_photos), and optionally send it to a connected family (they get a toast + History entry). For people outside Hemma (e.g. 'send it to my mom'), mint the link and deliver it through whatever channel you have.",
+  "Mint a PUBLIC 7-day link for a photo (asset_id from get_screen_photos), and optionally send it to a connected family (they get a toast + History entry). For people outside Sett (e.g. 'send it to my mom'), mint the link and deliver it through whatever channel you have.",
   { asset_id: z.string(), family_name: z.string().nullable().default(null) },
   async ({ asset_id, family_name }) => {
     const share = (await api("/api/photos/share", { method: "POST", body: { assetId: asset_id } })) as { url: string };

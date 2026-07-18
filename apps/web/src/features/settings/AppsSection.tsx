@@ -4,13 +4,13 @@ import QRCode from "qrcode";
 import { showToast } from "../../components/Toast";
 
 /**
- * "Phones & tablets" — get Hemma onto everyone's devices without app stores:
+ * "Phones & tablets" — get Sett onto everyone's devices without app stores:
  * the server's own address (big + copyable), a QR that downloads the Android
  * app straight from the latest GitHub release, and home-screen instructions
  * for iPhone. Written for the least technical person in the family.
  */
-const REPO = "https://github.com/xattribution/Hemma";
-const APK_URL = `${REPO}/releases/latest/download/hemma-android.apk`;
+const REPO = "https://github.com/xattribution/Sett";
+const APK_URL = `${REPO}/releases/latest/download/sett-android.apk`;
 const RELEASES_URL = `${REPO}/releases/latest`;
 
 export function AppsSection() {
@@ -64,7 +64,7 @@ export function AppsSection() {
         <div>
           <h4 className="mb-1 font-bold">🤖 Android</h4>
           <p className="text-sm font-semibold text-ink-soft">
-            Same home-screen trick works in Chrome — or install the Hemma app:
+            Same home-screen trick works in Chrome — or install the Sett app:
             scan this with the phone's camera to download it.
           </p>
           <div className="mt-2 flex items-center gap-3">
@@ -72,7 +72,7 @@ export function AppsSection() {
             <ol className="list-decimal space-y-1 pl-5 text-sm font-semibold text-ink-soft">
               <li>Scan → download → open the file.</li>
               <li>Allow the install if the phone asks (it's outside the Play Store for now).</li>
-              <li>Open Hemma and type the address above.</li>
+              <li>Open Sett and type the address above.</li>
             </ol>
           </div>
         </div>

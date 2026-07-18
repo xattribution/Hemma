@@ -10,10 +10,10 @@ import { parse } from "../core/http.js";
  * the family already owns.
  *
  * Mounting is the HOST's job: mount the NFS/SMB share on the box (or let
- * the NAS run Hemma itself) and bind it into the container, e.g.
+ * the NAS run Sett itself) and bind it into the container, e.g.
  *     volumes:
  *       - /mnt/family-nas/coord:/nas
- * Then point this plugin at /nas. On first use Hemma creates two folders:
+ * Then point this plugin at /nas. On first use Sett creates two folders:
  *     <root>/photos   — slideshow source (scanned recursively)
  *     <root>/files    — reserved for family file sharing (future; the
  *                       federation PTP channel will exchange from here)

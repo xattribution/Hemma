@@ -173,7 +173,7 @@ export function setSessionCookie(reply: FastifyReply, token: string) {
 /** Resolve the caller: bearer API token (AI/automation) first, then cookie. */
 export function sessionOf(db: Db, req: FastifyRequest): SessionInfo | null {
   if (req.headers["x-coord-internal"] === INTERNAL_TOKEN) {
-    return { kind: "agent", label: "Coord" }; // in-process service call
+    return { kind: "agent", label: "Sett" }; // in-process service call
   }
   const header = req.headers.authorization;
   if (header?.startsWith("Bearer ")) {

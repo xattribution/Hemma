@@ -4,7 +4,7 @@ import { requireAccess, requireActor } from "../core/auth.js";
 import { parse } from "../core/http.js";
 
 /**
- * Immich connector — points Hemma at the family's own Immich photo server.
+ * Immich connector — points Sett at the family's own Immich photo server.
  *
  * The server proxies everything: the API key never reaches a browser, and
  * displays (which hold no member credentials) can still pull photos. Two

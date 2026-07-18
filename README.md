@@ -1,6 +1,6 @@
-# 🏡 Hemma — the family coordination calendar
+# 🦡 Sett — the family coordination calendar
 
-*Hemma — Swedish for "at home."*
+*A sett is the den where a badger family lives.*
 
 A self-hosted, family-friendly hub that organizes your family's life: a classic
 light-mode calendar, kids' chores with points and swapping, shared shopping
@@ -8,15 +8,15 @@ lists, reminders, and an always-on kitchen-tablet dashboard — all syncing in
 real time to every phone, tablet and browser in the house.
 
 Your data lives on **your** server (a NAS, mini-PC or Raspberry-class box).
-One codebase, every platform: Hemma is a PWA, so it installs to the home
+One codebase, every platform: Sett is a PWA, so it installs to the home
 screen on iPhone and Android alike and runs full-screen on a kitchen display.
 
-> Naming note: the app is **Hemma**; the repo and internal identifiers
-> (`coord.db`, the `coord-data` volume, `@coord/*` packages, `COORD_URL`)
-> keep their original names on purpose — renaming them would break running
-> deployments for zero user benefit.
+> Naming note: the app is **Sett** (originally Coord, briefly Hemma).
+> Internal identifiers (`coord.db`, the `coord-data` volume, `@coord/*`
+> packages, `COORD_URL`) keep the original coord names on purpose —
+> renaming them would break running deployments for zero user benefit.
 
-![Hemma](apps/web/public/icons/icon-192.png)
+![Sett](apps/web/public/icons/icon-192.png)
 
 ## What's inside (Phase 1)
 
@@ -25,7 +25,7 @@ screen on iPhone and Android alike and runs full-screen on a kitchen display.
   categories, DST-safe timezone handling
 - **Other calendars, imported** — paste any calendar link (Google's "secret
   address", an iCloud public calendar, Outlook, TeamSnap/school "subscribe"
-  links) and it appears in Hemma and stays current on its own — read-only,
+  links) and it appears in Sett and stays current on its own — read-only,
   with per-feed category/person mapping, keyword filters and a private
   option; the Settings page walks non-technical folks to the right link
 - **Family & roles** — parents sign in with a password, kids with a big-button
@@ -74,9 +74,9 @@ screen on iPhone and Android alike and runs full-screen on a kitchen display.
 - **Plugin architecture** — the seams for what's next (see roadmap) are built
   and already used by the core features themselves
 
-## The three pieces of Hemma
+## The three pieces of Sett
 
-Hemma is deliberately split into three separate things. Know which one
+Sett is deliberately split into three separate things. Know which one
 you're touching:
 
 ```
@@ -119,11 +119,11 @@ no data — sign in and everything is there. → [setup / update](#3-the-ui-clie
 The app currently lives on the `claude/family-coordination-calendar-bs4zqo` branch:
 
 ```bash
-git clone -b claude/family-coordination-calendar-bs4zqo https://github.com/xattribution/Hemma.git
-cd Hemma
+git clone -b claude/family-coordination-calendar-bs4zqo https://github.com/xattribution/Sett.git
+cd Sett
 ```
 
-To just **run** Hemma on a server, skip straight to [Production (Docker)](#production-docker) —
+To just **run** Sett on a server, skip straight to [Production (Docker)](#production-docker) —
 no Node or pnpm needed on the host.
 
 ## Quick start (development)
@@ -159,28 +159,28 @@ same way.
 **Easiest: the guided installer (any Linux box or NAS with Docker)**
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/xattribution/Hemma/HEAD/deploy/install.sh | bash
+curl -fsSL https://raw.githubusercontent.com/xattribution/Sett/HEAD/deploy/install.sh | bash
 ```
 
 It asks a handful of plain-language questions — where to keep things, your
 timezone, an optional NAS folder for photos, an optional public address,
 and whether to restore from a backup file — then writes the compose file
-and starts Hemma. Re-run it later to update. (It pulls the published image;
+and starts Sett. Re-run it later to update. (It pulls the published image;
 use `bash install.sh --build` to build from source instead.)
 
 > Until the first `scripts/release.sh … --push-image` has published the
 > image to ghcr.io, the installer needs `--build`.
 
 **Windows PC as the server** — download
-`hemma-server-<version>-windows-x64.zip` from the
-[latest release](https://github.com/xattribution/Hemma/releases/latest),
-unzip anywhere, double-click **Start Hemma.bat**. No Docker, no Node — the
+`sett-server-<version>-windows-x64.zip` from the
+[latest release](https://github.com/xattribution/Sett/releases/latest),
+unzip anywhere, double-click **Start Sett.bat**. No Docker, no Node — the
 zip carries its own runtime. The README.txt inside covers backups and
 starting at boot.
 
 **Linux without Docker** — download
-`hemma-server-<version>-linux-x64.tar.gz` from the same release, unpack,
-`./start.sh`. A ready-to-edit `hemma.service` for systemd is inside.
+`sett-server-<version>-linux-x64.tar.gz` from the same release, unpack,
+`./start.sh`. A ready-to-edit `sett.service` for systemd is inside.
 
 **By hand (the classic way)**
 
@@ -248,8 +248,8 @@ can point at any relay URL (default `coord.tinbadger.com`).
 **Set up** (on a small VPS, [full guide](apps/relay/README.md)):
 
 ```bash
-git clone -b claude/family-coordination-calendar-bs4zqo https://github.com/xattribution/Hemma.git
-cd Hemma/deploy/relay
+git clone -b claude/family-coordination-calendar-bs4zqo https://github.com/xattribution/Sett.git
+cd Sett/deploy/relay
 docker compose up -d --build          # relay on port 8790
 # then proxy https://your-relay-domain → http://<vps>:8790
 # (no proxy on the box? RELAY_DOMAIN=your-domain docker compose --profile caddy up -d --build)
@@ -332,7 +332,7 @@ decisions for them are pinned in [docs/design-decisions.md](docs/design-decision
    providers (Ollama-style server), hosted APIs only by explicit opt-in
 2. **Voice** — wake word + speech-to-text (Whisper preferred, locally hosted)
    feeding the same intent parser; microphone mode for the kitchen display
-3. **Cross-family federation** — pair with grandma's or your brother's Hemma
+3. **Cross-family federation** — pair with grandma's or your brother's Sett
    instance (QR/invite code); parents choose exactly which categories/lists
    to share; conflicts resolve by write order, with the full trail in history
 4. **Email → calendar** — an AI-assisted inbox watcher that adds events from

@@ -45,7 +45,7 @@ export function App() {
   if (setup.isLoading || me.isLoading || deviceAuthPending) {
     return (
       <div className="flex min-h-dvh items-center justify-center text-5xl">
-        <span className="animate-pop">🏡</span>
+        <span className="animate-pop">🦡</span>
       </div>
     );
   }

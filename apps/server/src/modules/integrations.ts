@@ -8,7 +8,7 @@ import { recordAudit } from "../core/audit.js";
 import { AI_INSTRUCTIONS } from "./ai-instructions.js";
 
 /**
- * The machine side of Coord: bearer API tokens for AI/automation clients
+ * The machine side of Sett: bearer API tokens for AI/automation clients
  * (the MCP server, scripts, HAL…), a cross-entity search endpoint, and a
  * structured instructions document LLMs can be pointed at.
  */

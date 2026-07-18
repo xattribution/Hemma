@@ -107,7 +107,7 @@ export const federationModule: CoreModule = {
     const relayUrl = () => settings.get<string>("relayUrl", DEFAULT_RELAY).replace(/\/$/, "");
     const relayEnabled = () => settings.get<boolean>("relayEnabled", false);
     const allowPairing = () => settings.get<boolean>("allowPairing", true);
-    const ourName = () => getHousehold(db)?.name ?? "A Coord family";
+    const ourName = () => getHousehold(db)?.name ?? "A Sett family";
 
     /** Open pairing offers we created: code -> {mailbox, expires} (RAM only). */
     const offers = new Map<string, { mailbox: string; expires: number }>();
@@ -154,7 +154,7 @@ export const federationModule: CoreModule = {
         case "pair.approve": {
           db.prepare("UPDATE peers SET name = ?, status = 'active', outbox = COALESCE(?, outbox), peer_url = COALESCE(?, peer_url) WHERE id = ?")
             .run(message.name, message.mailbox ?? null, message.url ?? null, peer.id);
-          recordAudit(db, getHousehold(db)!.id, { memberId: null, name: "Coord" }, "peer", peer.id, "create",
+          recordAudit(db, getHousehold(db)!.id, { memberId: null, name: "Sett" }, "peer", peer.id, "create",
             `Connected with ${message.name} 🎉`);
           invalidate();
           fedChanged();
@@ -564,7 +564,7 @@ export const federationModule: CoreModule = {
         return;
       }
       if (body.pubkey === keys.publicKey) {
-        reply.code(400).send({ error: "That's this family's own code — enter it on the OTHER family's Hemma" });
+        reply.code(400).send({ error: "That's this family's own code — enter it on the OTHER family's Sett" });
         return;
       }
       const offer = offers.get(body.code.toUpperCase());
@@ -671,7 +671,7 @@ export const federationModule: CoreModule = {
           return;
         }
         if (!res.ok) {
-          // Their Coord answered with a reason (expired code, pairing off,
+          // Their Sett answered with a reason (expired code, pairing off,
           // own-code mixup…) — pass it through instead of a generic shrug.
           const remote = (await res.json().catch(() => null)) as { error?: string } | null;
           reply.code(400).send({ error: remote?.error ?? "Couldn't reach that family — check the address and code" });
@@ -679,7 +679,7 @@ export const federationModule: CoreModule = {
         }
         const { pubkey } = (await res.json()) as { pubkey: string };
         if (pubkey === keys.publicKey) {
-          reply.code(400).send({ error: "That address is this Hemma itself — enter the OTHER family's address" });
+          reply.code(400).send({ error: "That address is this Sett itself — enter the OTHER family's address" });
           return;
         }
         const dup = db.prepare("SELECT id FROM peers WHERE pubkey = ?").get(pubkey) as { id: string } | undefined;
@@ -704,7 +704,7 @@ export const federationModule: CoreModule = {
         return;
       }
       if (claim.pubkey === keys.publicKey) {
-        reply.code(400).send({ error: "That's this family's own code — enter it on the OTHER family's Hemma" });
+        reply.code(400).send({ error: "That's this family's own code — enter it on the OTHER family's Sett" });
         return;
       }
       const sharedKey = deriveSharedKey(keys.privateKey, claim.pubkey);

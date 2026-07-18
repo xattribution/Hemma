@@ -13,8 +13,8 @@ own servers.
 Any small VPS works (256 MB is plenty). With a domain pointed at it:
 
 ```bash
-git clone https://github.com/xattribution/Hemma.git
-cd Hemma/deploy/relay
+git clone https://github.com/xattribution/Sett.git
+cd Sett/deploy/relay
 RELAY_DOMAIN=relay.yourdomain.com docker compose up -d --build
 curl https://relay.yourdomain.com/health   # → {"ok":true,"service":"coord-relay"}
 ```

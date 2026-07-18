@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
-# Cut a Hemma release from a Linux machine with git + gh (GitHub CLI) set up.
+# Cut a Sett release from a Linux machine with git + gh (GitHub CLI) set up.
 #
 #   scripts/release.sh 0.2.0                # everything except pushing the Docker image
-#   scripts/release.sh 0.2.0 --push-image   # also push ghcr.io/xattribution/hemma (needs `docker login ghcr.io`)
+#   scripts/release.sh 0.2.0 --push-image   # also push ghcr.io/xattribution/sett (needs `docker login ghcr.io`)
 #
 # What it does, in order:
 #   1. gate: clean tree, tests + typecheck pass
@@ -24,7 +24,7 @@ VERSION="${1:-}"
   || die "usage: release.sh <version> [--push-image] — version looks like 0.2.0 (got: '${VERSION:-nothing}')"
 PUSH_IMAGE=0; [ "${2:-}" = "--push-image" ] && PUSH_IMAGE=1
 TAG="v$VERSION"
-IMAGE="ghcr.io/xattribution/hemma"
+IMAGE="ghcr.io/xattribution/sett"
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$ROOT"
 
@@ -80,10 +80,10 @@ cp deploy/install.sh release/install.sh
 if command -v docker >/dev/null 2>&1; then
   if [ "$PUSH_IMAGE" = 1 ]; then
     # arm64 builds run under QEMU on x86 hosts and are SLOW (~15 min first
-    # time; cached after). Skip ARM with: HEMMA_PLATFORMS=linux/amd64
-    PLATFORMS="${HEMMA_PLATFORMS:-linux/amd64,linux/arm64}"
+    # time; cached after). Skip ARM with: SETT_PLATFORMS=linux/amd64
+    PLATFORMS="${SETT_PLATFORMS:-linux/amd64,linux/arm64}"
     say "building + pushing $IMAGE:$VERSION ($PLATFORMS)"
-    docker buildx create --use --name hemma-builder >/dev/null 2>&1 || true
+    docker buildx create --use --name sett-builder >/dev/null 2>&1 || true
     docker buildx build --platform "$PLATFORMS" \
       -t "$IMAGE:$VERSION" -t "$IMAGE:latest" --push .
   else
@@ -107,25 +107,25 @@ git push origin "$TAG" || { sleep 3; git push origin "$TAG"; }
 
 say "creating the GitHub release"
 gh release create "$TAG" \
-  --title "Hemma $TAG" \
+  --title "Sett $TAG" \
   --notes "$(cat <<NOTES
-## Hemma $VERSION
+## Sett $VERSION
 
 **Easy install (pick one):**
-- 🐳 **Docker (any Linux box/NAS):** \`curl -fsSL https://raw.githubusercontent.com/xattribution/Hemma/HEAD/deploy/install.sh | bash\`
-- 🪟 **Windows server:** download \`hemma-server-$VERSION-windows-x64.zip\`, unzip, double-click **Start Hemma.bat**
-- 🐧 **Linux server:** download \`hemma-server-$VERSION-linux-x64.tar.gz\`, unpack, run \`./start.sh\`
+- 🐳 **Docker (any Linux box/NAS):** \`curl -fsSL https://raw.githubusercontent.com/xattribution/Sett/HEAD/deploy/install.sh | bash\`
+- 🪟 **Windows server:** download \`sett-server-$VERSION-windows-x64.zip\`, unzip, double-click **Start Sett.bat**
+- 🐧 **Linux server:** download \`sett-server-$VERSION-linux-x64.tar.gz\`, unpack, run \`./start.sh\`
 
 **Apps** (attached below by CI within ~30 min of this release appearing):
-- 📱 Android: \`hemma-android.apk\` — sideload it, open, type your server address (Settings → Phones & tablets shows a QR + the address)
+- 📱 Android: \`sett-android.apk\` — sideload it, open, type your server address (Settings → Phones & tablets shows a QR + the address)
 - 💻 Windows/macOS/Linux desktop clients: the .exe / .dmg / .deb / .AppImage files
 - iPhone: use the web app → Share → Add to Home Screen (App Store build is on the roadmap)
 
 Checksums: \`SHA256SUMS.txt\`
 NOTES
 )" \
-  release/hemma-server-"$VERSION"-linux-x64.tar.gz \
-  release/hemma-server-"$VERSION"-windows-x64.zip \
+  release/sett-server-"$VERSION"-linux-x64.tar.gz \
+  release/sett-server-"$VERSION"-windows-x64.zip \
   release/install.sh \
   release/SHA256SUMS.txt
 

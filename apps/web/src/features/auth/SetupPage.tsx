@@ -27,8 +27,8 @@ export function SetupPage() {
   return (
     <div className="mx-auto flex min-h-dvh max-w-md flex-col justify-center px-6 py-10">
       <div className="mb-8 text-center">
-        <div className="mb-2 text-6xl">🏡</div>
-        <h1 className="text-3xl font-extrabold">Welcome to Hemma!</h1>
+        <div className="mb-2 text-6xl">🦡</div>
+        <h1 className="text-3xl font-extrabold">Welcome to Sett!</h1>
         <p className="mt-1 font-semibold text-ink-soft">Let's set up your family's home base.</p>
       </div>
 

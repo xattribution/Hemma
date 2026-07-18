@@ -1,11 +1,11 @@
 /**
  * The structured instructions document served at /llms.txt — everything a
- * connected LLM needs to drive Coord over plain REST. Keep in sync with the
+ * connected LLM needs to drive Sett over plain REST. Keep in sync with the
  * routes; this is a contract with automation clients.
  */
-export const AI_INSTRUCTIONS = `# Hemma — API instructions for AI assistants
+export const AI_INSTRUCTIONS = `# Sett — API instructions for AI assistants
 
-Hemma is a self-hosted family coordination calendar: events, kids' chores,
+Sett is a self-hosted family coordination calendar: events, kids' chores,
 shared shopping lists, reminders, displays. You (the assistant) can read and
 manage all of it over REST. Everything you do is attributed to your token's
 label in the family's history feed, so act like a polite member of the family.
@@ -21,13 +21,13 @@ parent-level permissions.
 
 ## Conventions
 
-- Base URL: the family's Hemma server, e.g. https://coord.example.com
+- Base URL: the family's Sett server, e.g. https://coord.example.com
 - All bodies are JSON. Timestamps are UTC milliseconds since epoch.
 - Recurring events use RFC-5545 RRULE strings (e.g. "FREQ=WEEKLY;BYDAY=MO,WE").
 - Dates in query params are ISO (YYYY-MM-DD); the household timezone governs
   what "today" means — read it from GET /api/auth/me (household.timezone).
 - Errors: { "error": "message" } with 4xx/5xx status.
-- Hemma was formerly named "Coord" — internal identifiers kept the old
+- Sett was formerly named "Coord" — internal identifiers kept the old
   name (env vars COORD_URL/COORD_TOKEN, database coord.db, cookie
   coord_session). Same product; don't be confused by the mix.
 
@@ -205,7 +205,7 @@ it's showing.
   that link to a connected family (they get a toast + a History entry).
 "Send the picture on the kitchen display to Jonathan's family" =
 current → find screen "Kitchen" → share its assetId → share-photo to the
-peer. For someone outside Coord (grandma's phone), mint the link and
+peer. For someone outside Sett (grandma's phone), mint the link and
 deliver it however you deliver messages.
 
 ## Meal planning

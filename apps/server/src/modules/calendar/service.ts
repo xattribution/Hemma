@@ -44,7 +44,7 @@ interface EventRow {
   source_sub_id: string | null;
 }
 
-/** Imported (subscribed-calendar) events are read-only inside Hemma. */
+/** Imported (subscribed-calendar) events are read-only inside Sett. */
 function rejectIfImported(db: Db, row: EventRow): void {
   if (!row.source_sub_id) return;
   const sub = db.prepare("SELECT label FROM cal_subscriptions WHERE id = ?").get(row.source_sub_id) as

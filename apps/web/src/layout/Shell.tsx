@@ -52,7 +52,7 @@ export function Shell({ me }: { me: Extract<Me, { kind: "member" }> }) {
     <div className="shell-frame mx-auto flex min-h-dvh max-w-7xl flex-col">
       <header className="flex items-center justify-between gap-3 border-b border-line px-4 pb-3 pt-4 sm:px-6">
         <div className="flex min-w-0 items-center gap-2">
-          <span className="text-2xl">🏡</span>
+          <span className="text-2xl">🦡</span>
           <h1 className="truncate text-lg font-extrabold leading-tight">{me.household.name}</h1>
         </div>
         <nav className="hidden gap-5 sm:flex">

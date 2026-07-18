@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>Hemma</title>
+<title>Sett</title>
 <style>
   /* Mirrors the app's cozy light theme (apps/web/src/theme/global.css). */
   :root {
@@ -44,9 +44,9 @@
 </head>
 <body>
   <div class="card">
-    <div class="logo">🏡</div>
+    <div class="logo">🦡</div>
     <h1 id="title">Connect to your family</h1>
-    <p id="subtitle">Type the address of your Hemma server — ask whoever set it up.</p>
+    <p id="subtitle">Type the address of your Sett server — ask whoever set it up.</p>
     <form id="form">
       <input id="address" placeholder="192.168.1.20:49733 or coord.myfamily.com"
         autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" />
@@ -126,7 +126,7 @@
       clearTimeout(redirectTimer);
       localStorage.removeItem(KEY);
       $("title").textContent = "Connect to your family";
-      $("subtitle").textContent = "Type the address of your Hemma server — ask whoever set it up.";
+      $("subtitle").textContent = "Type the address of your Sett server — ask whoever set it up.";
       $("cancel").hidden = true;
       $("address").focus();
     });

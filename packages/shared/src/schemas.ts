@@ -224,8 +224,8 @@ export type MessageThread = z.infer<typeof messageThreadSchema>;
 /**
  * A read-only feed from another calendar (Google's "secret address", iCloud
  * public links, Outlook published calendars, TeamSnap/school "subscribe"
- * links). Hemma polls it and mirrors matching events; nothing is ever sent
- * back. Imported events carry sourceLabel and can't be edited in Hemma.
+ * links). Sett polls it and mirrors matching events; nothing is ever sent
+ * back. Imported events carry sourceLabel and can't be edited in Sett.
  */
 export const calSubscriptionInputSchema = z.object({
   /** Shown on imported events; defaults to the feed's own calendar name. */
