@@ -10,12 +10,15 @@ Goal: grandma's household runs Coord without knowing what Docker is.
 
 Three tiers, built in this order (each reuses the previous):
 
-## Tier 1 — One-line installer (near-term, days of work)
-A `get.coord.sh` script + a prebuilt multi-arch Docker image on GHCR
-(`ghcr.io/xattribution/coord`). The script checks for Docker, installs it if
-missing, writes the compose file, prompts for a family name, and prints the
-URL + QR code. Works on any Linux box/NAS/Pi. This also becomes the base for
-"a techy relative sets it up once" — the realistic path for most families.
+## Tier 1 — One-line installer — **SHIPPED**
+`deploy/install.sh` (curl-able, prompts for install dir/port/timezone/NAS
+folder/public hostname/restore-from-backup) + multi-arch GHCR image pushed
+by `scripts/release.sh --push-image`. **Also shipped beyond the plan:**
+standalone server bundles — a Windows zip (`Start Hemma.bat`, own Node
+runtime, no Docker) and a Linux tarball (`start.sh` + systemd template) —
+built by `scripts/build-server-bundle.sh` and attached to every release.
+The Windows zip covers most of Tier 2's value (a Windows PC as the family
+server) without the tray-app work.
 
 ## Tier 2 — Desktop app (Windows .exe / macOS .dmg) (mid-term, ~1-2 weeks)
 **Tauri** wrapper (Rust shell, tiny binaries) that bundles the Node server as

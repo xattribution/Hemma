@@ -10,6 +10,10 @@ dev-dist/
 coverage/
 *.tsbuildinfo
 
+# release tooling
+.cache/
+release/
+
 # Tauri shell
 apps/shell/src-tauri/target/
 apps/shell/src-tauri/gen/

@@ -17,7 +17,7 @@ start here (and confirm priorities with Jared first).
 | Drawable calendar overlay | Not started (Phase 6) | `calendar.day-cell.overlay` plugin slot is the reserved seam |
 | Home Assistant integration | Not started (Phase 6) | Bus → MQTT relay plugin |
 | Points redemption / allowance payout | Goals + ledger + races/deadlines/monthly resets shipped; no "spend points" flow | Ledger supports it: negative `manual` entries; needs UI concept |
-| Server-in-a-box packaging (installer / desktop-bundled server / tablet-as-server APK) | Client shells shipped; server tiers pending | `docs/packaging-plan.md` |
+| Server-in-a-box packaging | **SHIPPED**: guided Docker installer (`deploy/install.sh`), standalone Windows-zip + Linux-tarball server bundles, `scripts/release.sh` pipeline, Settings → Phones & tablets (APK QR). Still open: Play Store / App Store listings, release-signed APK, desktop-bundled server, tablet-as-server | `docs/packaging-plan.md`, wiki/apps-shell.md |
 
 ## Partial implementations (works, but bounded)
 

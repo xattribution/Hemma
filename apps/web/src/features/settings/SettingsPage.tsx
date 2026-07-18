@@ -15,6 +15,7 @@ import { FamiliesSection } from "./FamiliesSection";
 import { AiAccessSection } from "./AiAccessSection";
 import { PhotosSection } from "./PhotosSection";
 import { SubscriptionsSection } from "./SubscriptionsSection";
+import { AppsSection } from "./AppsSection";
 
 export function SettingsPage({ me }: { me: Extract<Me, { kind: "member" }> }) {
   const isParent = can(me.member.role, "settings.manage");
@@ -26,6 +27,7 @@ export function SettingsPage({ me }: { me: Extract<Me, { kind: "member" }> }) {
       <NotificationsSection />
       {isParent && <DisplaysSection />}
       {isParent && <SubscriptionsSection />}
+      {isParent && <AppsSection />}
       {isParent && <FamiliesSection />}
       {isParent && <PhotosSection />}
       {isParent && <AiAccessSection />}

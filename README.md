@@ -145,10 +145,38 @@ pnpm typecheck
 
 ## 1. The home server
 
-The family's system of record. Runs as one Docker container on any Linux
-box/NAS/mini-PC (or as `pnpm dev` while developing).
+The family's system of record. Pick whichever install fits the machine you
+have — all three store the family in the same single file and update the
+same way.
 
-**Set up**
+**Easiest: the guided installer (any Linux box or NAS with Docker)**
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/xattribution/coord/main/deploy/install.sh | bash
+```
+
+It asks a handful of plain-language questions — where to keep things, your
+timezone, an optional NAS folder for photos, an optional public address,
+and whether to restore from a backup file — then writes the compose file
+and starts Hemma. Re-run it later to update. (It pulls the published image;
+use `bash install.sh --build` to build from source instead.)
+
+> Until the first `scripts/release.sh … --push-image` has published the
+> image to ghcr.io, the installer needs `--build` — and while the code
+> lives on the working branch, swap `main` in the URL for the branch name.
+
+**Windows PC as the server** — download
+`hemma-server-<version>-windows-x64.zip` from the
+[latest release](https://github.com/xattribution/coord/releases/latest),
+unzip anywhere, double-click **Start Hemma.bat**. No Docker, no Node — the
+zip carries its own runtime. The README.txt inside covers backups and
+starting at boot.
+
+**Linux without Docker** — download
+`hemma-server-<version>-linux-x64.tar.gz` from the same release, unpack,
+`./start.sh`. A ready-to-edit `hemma.service` for systemd is inside.
+
+**By hand (the classic way)**
 
 ```bash
 docker compose up -d --build
@@ -237,10 +265,15 @@ All clients are windows onto the home server — they store nothing.
   install, or ⋮ → Add to Home screen.
 - **Native apps** — Windows `.exe`, Linux `.deb`/`.AppImage`, macOS `.dmg`,
   Android `.apk`: thin shells that ask for your server address once, then
-  open the same UI ([install guide](docs/apps.md)). Build a release with
-  `git tag vX.Y.Z && git push --tags` — GitHub Actions attaches all
-  installers to the release. A dedicated iOS app is future work; the
-  installed PWA covers iPhones today.
+  open the same UI ([install guide](docs/apps.md)). **Android sideload:**
+  Settings → **Phones & tablets** in the app shows a QR code that downloads
+  the APK straight from the latest release, plus the address to type on
+  first launch — no Play Store needed. A dedicated iOS app is future work;
+  the installed PWA covers iPhones today.
+- **Cutting a release** (maintainer, on a Linux machine with `gh`):
+  `scripts/release.sh 0.2.0 --push-image` — runs the test gate, builds the
+  standalone server bundles and Docker image, tags, creates the GitHub
+  release, and CI attaches the desktop apps + APK to it (~30 min).
 - **Updating clients:** browsers/PWAs update automatically from the server.
   Native shells almost never need updating (the UI they show *is* the
   server's) — only grab a new release when the shell itself changes.
