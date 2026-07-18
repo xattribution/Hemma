@@ -1,4 +1,30 @@
-# Photos (Immich plugin)
+# Photos: sources, slideshows & screensaver
+
+Three layers:
+1. **Source plugins** (optional, toggled under Plugins): `immich`
+   (`apps/server/src/plugins/immich.ts`) and `nas`
+   (`apps/server/src/plugins/nas.ts`). Google Photos is planned alongside
+   Google Calendar sync.
+2. **The unified tap** — `core.photos` (`modules/photos.ts`): a parent picks
+   the household source (Settings → Photos); `GET /api/photos/random` and
+   `GET /api/photos/asset/:id` 307-redirect to the chosen backend so
+   consumers never care which one it is.
+3. **Consumers** — the `photos` display layout (DisplayPhotos) and the
+   in-app slideshow/screensaver (`features/photos/Slideshow.tsx`): avatar
+   menu → Slideshow → start now / start once in N minutes / screensaver
+   after N idle minutes (per-device, localStorage `coord.slideshow.idleMinutes`).
+
+## NAS folder plugin
+
+Mounting is the HOST's job: mount the NFS/SMB share and bind it into the
+container (`- /mnt/family-nas/coord:/nas` in docker-compose.yml), then set
+the path in Settings → Photos. On connect Coord creates `<root>/photos`
+(scanned recursively, 1-min cache, jpg/png/webp/gif/avif) and
+`<root>/files` (reserved for cross-family file sharing over the federation
+channel — future). Asset ids are base64url relative paths resolved
+strictly inside photos/ (traversal rejected). Tests: `test/nas.test.ts`.
+
+## Immich plugin (below)
 
 **Plugin:** `apps/server/src/plugins/immich.ts` (optional — toggle in
 Settings → Plugins, id `immich`)
@@ -49,8 +75,8 @@ parent-only settings.
 
 ## Pending / gaps
 
-- **NAS folder connector is NOT built** — this plugin covers the Immich
-  path only. The photos/screensaver/NAS plan (incl. cross-family folder
-  sharing via the relay's PTP connection) lives in `docs/photos-plan.md`.
-- No idle screensaver (photos is an explicit layout, not an idle state).
+- `files/` sharing between families is NOT built (folder reserved; will
+  ride the federation channel).
+- Google Photos + Google Calendar sync: future integration (source picker
+  already lists it as "soon").
 - No video assets (IMAGE filter only), no multi-album mix, no upload.

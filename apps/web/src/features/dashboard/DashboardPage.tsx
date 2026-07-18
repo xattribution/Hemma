@@ -84,7 +84,7 @@ function DisplayPhotos() {
   useEffect(() => {
     let cancelled = false;
     const load = () =>
-      fetch("/api/p/immich/random?count=30")
+      fetch("/api/photos/random?count=30")
         .then(async (res) => {
           if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error ?? "Photos unavailable");
           return res.json() as Promise<{ assets: { id: string }[] }>;
@@ -117,7 +117,7 @@ function DisplayPhotos() {
       <div className="flex h-[70dvh] flex-col items-center justify-center gap-3 rounded-card bg-card text-center shadow-card">
         <span className="text-6xl">🖼️</span>
         <p className="max-w-md px-6 text-lg font-bold text-ink-soft">{error}</p>
-        <p className="text-sm font-semibold text-ink-soft">Set up Immich under Settings → Photos, then pick this screen again.</p>
+        <p className="text-sm font-semibold text-ink-soft">Pick a photo source under Settings → Photos.</p>
       </div>
     );
   }
@@ -125,7 +125,7 @@ function DisplayPhotos() {
   return (
     <div className="relative h-[78dvh] overflow-hidden rounded-card bg-black shadow-card">
       {current && (
-        <img key={current} src={`/api/p/immich/asset/${current}`} alt=""
+        <img key={current} src={`/api/photos/asset/${current}`} alt=""
           className="animate-pop h-full w-full object-contain" />
       )}
     </div>

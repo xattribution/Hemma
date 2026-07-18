@@ -24,6 +24,8 @@ import { integrationsModule } from "./modules/integrations.js";
 import { federationModule } from "./modules/federation.js";
 import { pointsModule } from "./modules/points.js";
 import { backupModule } from "./modules/backup.js";
+import { photosModule } from "./modules/photos.js";
+import { nasPlugin } from "./plugins/nas.js";
 import { dailyQuotePlugin } from "./plugins/daily-quote.js";
 import { immichPlugin } from "./plugins/immich.js";
 
@@ -90,8 +92,10 @@ export async function buildApp(options: BuildOptions): Promise<{ app: FastifyIns
     federationModule,
     pointsModule,
     backupModule,
+    photosModule,
     dailyQuotePlugin,
     immichPlugin,
+    nasPlugin,
   ];
   const host = await registerModules(
     { app, db, bus, scheduler, broadcast: (msg) => hub.broadcast(msg), log },

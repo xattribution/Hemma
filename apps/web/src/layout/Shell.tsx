@@ -1,10 +1,11 @@
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { NavLink, Outlet } from "react-router";
-import { CalendarDays, ClipboardList, History, ListChecks, LogOut, Settings, Star, UsersRound } from "lucide-react";
+import { CalendarDays, ClipboardList, History, Images, ListChecks, LogOut, Settings, Star, UsersRound } from "lucide-react";
 import type { Me } from "@coord/shared";
 import { Avatar } from "../components/Avatar";
 import { SwitchPersonModal } from "../components/SwitchPersonModal";
 import { ThemeToggle } from "../components/ThemeToggle";
+import { SlideshowOverlay, SlideshowSetupModal, useIdleSlideshow } from "../features/photos/Slideshow";
 import { useLogout } from "../api/queries";
 
 const ALL_TABS = [
@@ -24,7 +25,12 @@ export function Shell({ me }: { me: Extract<Me, { kind: "member" }> }) {
   const tabs = me.member.role === "child" ? KID_TABS : ALL_TABS;
   const [menuOpen, setMenuOpen] = useState(false);
   const [switching, setSwitching] = useState(false);
+  const [slides, setSlides] = useState(false);
+  const [slidesSetup, setSlidesSetup] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
+
+  const startSlides = useCallback(() => setSlides(true), []);
+  useIdleSlideshow(startSlides, slides);
 
   useEffect(() => {
     if (!menuOpen) return;
@@ -94,6 +100,11 @@ export function Shell({ me }: { me: Extract<Me, { kind: "member" }> }) {
                 </div>
               )}
               <button type="button" role="menuitem"
+                onClick={() => { setMenuOpen(false); setSlidesSetup(true); }}
+                className="flex w-full items-center gap-2 rounded-xl px-2.5 py-2 text-sm font-bold hover:bg-cream">
+                <Images size={16} className="text-ink-soft" /> Slideshow
+              </button>
+              <button type="button" role="menuitem"
                 onClick={() => { setMenuOpen(false); setSwitching(true); }}
                 className="flex w-full items-center gap-2 rounded-xl px-2.5 py-2 text-sm font-bold hover:bg-cream">
                 <UsersRound size={16} className="text-ink-soft" /> Switch person
@@ -109,6 +120,8 @@ export function Shell({ me }: { me: Extract<Me, { kind: "member" }> }) {
       </header>
 
       {switching && <SwitchPersonModal currentId={me.member.id} onClose={() => setSwitching(false)} />}
+      {slidesSetup && <SlideshowSetupModal onStart={startSlides} onClose={() => setSlidesSetup(false)} />}
+      {slides && <SlideshowOverlay onExit={() => setSlides(false)} />}
 
       <main className="flex-1 px-3 pb-24 sm:px-6 sm:pb-8">
         <Outlet />

@@ -9,6 +9,10 @@ services:
       - "49733:49733"
     volumes:
       - coord-data:/data # the whole family database — back this folder up
+      # NAS photos & files: mount your NFS/SMB share on the host, bind it in,
+      # then set Settings → Photos → NAS folder to /nas. Coord creates
+      # photos/ (slideshows) and files/ (family file sharing, future) inside.
+      # - /mnt/family-nas/coord:/nas
 
   # HTTPS: put your reverse proxy of choice in front (Nginx Proxy Manager,
   # Caddy, Traefik…) → proxy your domain to http://<host>:49733 with

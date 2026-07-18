@@ -8,8 +8,8 @@ start here (and confirm priorities with Jared first).
 
 | Feature | State | Seam / plan |
 | --- | --- | --- |
-| **NAS folder connector** (photos from a NAS share; cross-family folder sharing via relay PTP) | Not started — only the Immich path exists | `docs/photos-plan.md`; would join the immich plugin under a "photo sources" umbrella |
-| Idle screensaver (dashboard → photos after N min idle) | Not started | `photos` layout exists; add idle timer + per-display screensaver config |
+| **Cross-family file sharing** from the NAS `files/` folder | NAS photo source SHIPPED (nas plugin + unified /api/photos source); `files/` folder is created but sharing isn't built | Ride the federation sealed channel; see wiki/immich.md |
+| Google Photos source + Google Calendar 2-way sync | Not started (picker shows "soon") | OAuth + incremental sync; photo source drops into /api/photos |
 | AI assistant plugin (chat box, "magic add", recall answers) | Not started (Phase 2 of original plan) | Provider-agnostic adapter (Ollama/Anthropic/OpenAI); local-first, **no external APIs by default**; reuse REST services + audit grounding |
 | Voice control (wake word + STT) | Not started (Phase 3) | **Whisper preferred**; feeds the Phase-2 intent parser |
 | Email → calendar ingest | Not started (Phase 5) | IMAP watcher plugin → extraction → **direct-add by default, approval tray optional** (user's explicit choice) |
