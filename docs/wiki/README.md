@@ -25,7 +25,7 @@ tokens + an MCP server.
 | `apps/server/src/plugins/*` | Optional (toggleable) plugins: daily-quote, immich | [immich](immich.md) |
 | `apps/web` | React 19 + Vite PWA (Tailwind 4, TanStack Query) | [frontend](frontend.md) |
 | `apps/relay` | Zero-knowledge federation relay (zero-dep Node) | [federation](federation.md) |
-| `apps/mcp` | MCP server wrapping the REST API (~25 tools) | [ai-access](ai-access.md) |
+| `apps/mcp` | MCP server wrapping the REST API (~28 tools) | [ai-access](ai-access.md) |
 | `apps/shell` | Tauri 2 native shell (exe/deb/AppImage/dmg/apk) | [apps-shell](apps-shell.md) |
 | `packages/shared` | Zod schemas — THE source of truth for types both sides | [server-core](server-core.md) |
 | `packages/plugin-sdk` | Stable plugin surface (bus, context, slots) | [server-core](server-core.md) |
@@ -38,6 +38,7 @@ tokens + an MCP server.
 - [calendar.md](calendar.md) — events, recurrence, exceptions, day summaries
 - [chores.md](chores.md) — tasks, steps, points, completion semantics, swapping
 - [lists.md](lists.md) — list kinds, store tags, meal plans, clear/share
+- [points.md](points.md) — the ledger, goals, family-chore awards
 - [members-kids.md](members-kids.md) — roles, credentials (password/PIN/pattern), grants, kid UI tiers
 - [displays.md](displays.md) — device tokens, elevation, layouts (incl. photos)
 - [federation.md](federation.md) — pairing, crypto, message protocol, relay
@@ -51,7 +52,7 @@ tokens + an MCP server.
 
 **One process, one file.** The server is a single Fastify process over one
 better-sqlite3 database (WAL). Migrations are plain SQL steps keyed by
-`PRAGMA user_version` (currently **8**) in `core/db.ts`. There is no ORM.
+`PRAGMA user_version` (currently **9**) in `core/db.ts`. There is no ORM.
 Modules run raw SQL against tables they own; cross-module reads go through
 exported service functions (`loadChecklists`, `createEvent`, …).
 
@@ -81,8 +82,9 @@ permissions and audit attribution. Details in [server-core.md](server-core.md).
 
 - Port **49733** (host user runs Obsidian on 3000). Relay: **8790**.
 - `pnpm dev` runs server (tsx watch) + web (Vite:5173, proxying /api).
-- Tests: `pnpm --filter @coord/server test` (Vitest, 47 tests incl. a
-  two-instance federation suite over real HTTP + real crypto).
+- Tests: `pnpm --filter @coord/server test` (Vitest, ~59 tests incl. a
+  two-instance federation suite over real HTTP + real crypto, points/group
+  chores, and a fake-Immich proxy suite).
 - Seed demo data: `pnpm --filter @coord/server seed` (Jared/Sam `family123`,
   Mia PIN `1111` teen-tier, Leo pattern cat→horse→cat→goat little-tier).
 - Browser verification: playwright-core with

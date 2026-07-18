@@ -5,7 +5,7 @@ import crypto from "node:crypto";
 
 export type Db = Database.Database;
 
-const SCHEMA_VERSION = 8;
+const SCHEMA_VERSION = 9;
 
 const SCHEMA = /* sql */ `
 CREATE TABLE households (
@@ -294,6 +294,45 @@ function migrate(db: Db) {
   if (version < 8) {
     // Kid UI tiers: 'little' (Fisher-Price scale) or 'teen' (standard UI).
     db.exec("ALTER TABLE members ADD COLUMN ui_level TEXT;");
+  }
+  if (version < 9) {
+    // Points v2: who checked each step (step points go to the do-er), an
+    // auditable ledger (awards land only when the whole task completes;
+    // parents can add/deduct manually), and parent-defined goals.
+    db.exec(/* sql */ `
+      ALTER TABLE step_checks ADD COLUMN checked_by TEXT;
+
+      CREATE TABLE points_ledger (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        household_id TEXT NOT NULL,
+        member_id TEXT NOT NULL,
+        delta INTEGER NOT NULL,
+        reason TEXT NOT NULL,
+        source TEXT NOT NULL CHECK (source IN ('task','step','manual')),
+        task_id TEXT,
+        occurrence_date TEXT,
+        created_by TEXT,
+        created_at INTEGER NOT NULL
+      );
+      CREATE INDEX idx_points_member ON points_ledger(household_id, member_id, created_at);
+      CREATE INDEX idx_points_task ON points_ledger(task_id, occurrence_date);
+
+      CREATE TABLE point_goals (
+        id TEXT PRIMARY KEY,
+        household_id TEXT NOT NULL,
+        title TEXT NOT NULL,
+        icon TEXT NOT NULL DEFAULT '🏆',
+        mode TEXT NOT NULL CHECK (mode IN ('target','race')),
+        target INTEGER NOT NULL,
+        member_ids_json TEXT,
+        starts_at INTEGER NOT NULL,
+        ends_at INTEGER,
+        repeat TEXT NOT NULL DEFAULT 'none' CHECK (repeat IN ('none','monthly')),
+        reward TEXT NOT NULL DEFAULT '',
+        created_at INTEGER NOT NULL,
+        deleted_at INTEGER
+      );
+    `);
   }
   db.pragma(`user_version = ${SCHEMA_VERSION}`);
 }

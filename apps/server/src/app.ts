@@ -22,6 +22,8 @@ import { dashboardModule } from "./modules/dashboard.js";
 import { auditModule } from "./modules/audit.js";
 import { integrationsModule } from "./modules/integrations.js";
 import { federationModule } from "./modules/federation.js";
+import { pointsModule } from "./modules/points.js";
+import { backupModule } from "./modules/backup.js";
 import { dailyQuotePlugin } from "./plugins/daily-quote.js";
 import { immichPlugin } from "./plugins/immich.js";
 
@@ -86,6 +88,8 @@ export async function buildApp(options: BuildOptions): Promise<{ app: FastifyIns
     auditModule,
     integrationsModule,
     federationModule,
+    pointsModule,
+    backupModule,
     dailyQuotePlugin,
     immichPlugin,
   ];

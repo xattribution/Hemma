@@ -64,7 +64,7 @@ export async function registerModules(
   base.bus.on("event.updated", () => invalidate(["events", "dashboard", "audit"]));
   base.bus.on("event.deleted", () => invalidate(["events", "dashboard", "audit"]));
   base.bus.on("task.created", () => invalidate(["tasks", "dashboard", "audit"]));
-  base.bus.on("task.completed", () => invalidate(["tasks", "dashboard", "audit"]));
+  base.bus.on("task.completed", () => invalidate(["tasks", "dashboard", "audit", "points"]));
   base.bus.on("task.reassigned", () => invalidate(["tasks", "dashboard", "audit"]));
   base.bus.on("checklist.item.checked", () => invalidate(["checklists", "dashboard", "audit"]));
   base.bus.on("member.updated", () => invalidate(["members", "dashboard"]));
@@ -72,6 +72,6 @@ export async function registerModules(
   return host;
 }
 
-function invalidateMsg(keys: ("events" | "tasks" | "checklists" | "members" | "dashboard" | "audit")[]): WsServerMessage {
+function invalidateMsg(keys: ("events" | "tasks" | "checklists" | "members" | "dashboard" | "audit" | "points")[]): WsServerMessage {
   return { type: "invalidate", keys };
 }

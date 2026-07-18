@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { ArrowLeftRight, Check, Pencil, Plus, Star, Trash2 } from "lucide-react";
-import type { Me, Member, Task, TaskInput } from "@coord/shared";
+import type { Me, Member, Task, TaskInput, TaskStep } from "@coord/shared";
 import { can } from "@coord/shared";
 import { useMembers, useTaskMutations, useTasks } from "../../api/queries";
 import { Avatar, MemberChip } from "../../components/Avatar";
@@ -28,6 +28,7 @@ export function TasksPage({ me }: { me: Extract<Me, { kind: "member" }> }) {
   const ordered = [...(members ?? [])].sort((a, b) =>
     a.id === me.member.id ? -1 : b.id === me.member.id ? 1 : 0,
   );
+  const memberById = new Map((members ?? []).map((m) => [m.id, m]));
   const columns: { member: Member | null; tasks: Task[] }[] = [
     ...ordered.map((member) => ({ member, tasks: tasks.filter((t) => t.assigneeId === member.id) })),
     { member: null, tasks: tasks.filter((t) => !t.assigneeId) },
@@ -61,8 +62,8 @@ export function TasksPage({ me }: { me: Extract<Me, { kind: "member" }> }) {
                 </>
               ) : (
                 <>
-                  <span className="text-xl">🙋</span>
-                  <span className="font-extrabold text-ink-soft">Up for grabs</span>
+                  <span className="text-xl">👪</span>
+                  <span className="font-extrabold text-ink-soft">Family & up for grabs</span>
                 </>
               )}
               <span className="ml-auto flex items-center gap-1.5 text-xs font-bold text-ink-soft">
@@ -82,15 +83,26 @@ export function TasksPage({ me }: { me: Extract<Me, { kind: "member" }> }) {
               {columnTasks.map((task) => (
                 <div key={task.id}
                   className={`flex items-center gap-2 rounded-xl border-2 border-line px-2 py-2 transition ${task.completed ? "opacity-50" : ""}`}>
-                  {/* An unmistakable checkbox — same language as lists & the kid app. */}
-                  <button type="button" onClick={() => toggle(task)}
-                    aria-label={task.completed ? "Mark not done" : "Mark done"}
-                    title={task.completed ? "Mark not done" : "Mark done"}
-                    className={`group flex h-9 w-9 shrink-0 items-center justify-center rounded-full border-[2.5px] transition active:scale-90 ${
-                      task.completed ? "border-leaf bg-leaf text-white" : "border-ink-soft/40 bg-cream hover:border-leaf"
-                    }`}>
-                    <Check size={20} className={task.completed ? "" : "opacity-0 text-leaf transition group-hover:opacity-60"} />
-                  </button>
+                  {task.steps.length > 0 ? (
+                    /* Multi-part chores green up only through their steps —
+                       this circle just reports progress. */
+                    <span aria-label={`${task.stepsDone.length} of ${task.steps.length} steps done`}
+                      className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full border-[2.5px] text-[11px] font-extrabold ${
+                        task.completed ? "border-leaf bg-leaf text-white" : "border-ink-soft/30 bg-cream text-ink-soft"
+                      }`}>
+                      {task.completed ? <Check size={20} /> : `${task.stepsDone.length}/${task.steps.length}`}
+                    </span>
+                  ) : (
+                    /* An unmistakable checkbox — same language as lists & the kid app. */
+                    <button type="button" onClick={() => toggle(task)}
+                      aria-label={task.completed ? "Mark not done" : "Mark done"}
+                      title={task.completed ? "Mark not done" : "Mark done"}
+                      className={`group flex h-9 w-9 shrink-0 items-center justify-center rounded-full border-[2.5px] transition active:scale-90 ${
+                        task.completed ? "border-leaf bg-leaf text-white" : "border-ink-soft/40 bg-cream hover:border-leaf"
+                      }`}>
+                      <Check size={20} className={task.completed ? "" : "opacity-0 text-leaf transition group-hover:opacity-60"} />
+                    </button>
+                  )}
                   <span className="shrink-0 text-xl" aria-hidden>{task.icon}</span>
                   <div className="min-w-0 flex-1">
                     <p className={`truncate text-sm font-bold ${task.completed ? "line-through" : ""}`}>{task.title}</p>
@@ -98,14 +110,24 @@ export function TasksPage({ me }: { me: Extract<Me, { kind: "member" }> }) {
                       <div className="mt-0.5 space-y-0.5">
                         {task.steps.map((step, i) => {
                           const stepDone = task.stepsDone.includes(i);
+                          const stepOwner = step.assigneeId ? memberById.get(step.assigneeId) : null;
+                          const lockedForMe = me.member.role === "child" && !!step.assigneeId && step.assigneeId !== me.member.id;
                           return (
-                            <button key={i} type="button"
-                              onClick={() => mutations.toggleStep.mutate({ id: task.id, stepIndex: i, occurrenceDate: task.occurrenceDate })}
-                              className="flex w-full items-center gap-2 rounded-lg px-1.5 py-1 text-left text-xs font-semibold hover:bg-cream">
+                            <button key={i} type="button" disabled={lockedForMe}
+                              title={lockedForMe && stepOwner ? `${stepOwner.name}'s step` : undefined}
+                              onClick={() => mutations.toggleStep.mutate(
+                                { id: task.id, stepIndex: i, occurrenceDate: task.occurrenceDate },
+                                { onError: (err) => showToast(err.message, "error") },
+                              )}
+                              className={`flex w-full items-center gap-2 rounded-lg px-1.5 py-1 text-left text-xs font-semibold ${
+                                lockedForMe ? "opacity-50" : "hover:bg-cream"
+                              }`}>
                               <span className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-full border-2 text-[10px] ${
                                 stepDone ? "border-leaf bg-leaf text-white" : "border-ink-soft/40 bg-cream"
                               }`}>{stepDone ? "✓" : ""}</span>
-                              <span className={stepDone ? "text-ink-soft line-through" : "text-ink-soft"}>{step}</span>
+                              <span className={`min-w-0 flex-1 truncate ${stepDone ? "text-ink-soft line-through" : "text-ink-soft"}`}>{step.text}</span>
+                              {step.points ? <span className="shrink-0 text-[10px] font-extrabold text-sun">★{step.points}</span> : null}
+                              {stepOwner && <Avatar member={stepOwner} size="sm" />}
                             </button>
                           );
                         })}
@@ -180,8 +202,11 @@ function TaskModal({ task, members, onClose }: { task: Task | null; members: Mem
   const [assigneeId, setAssigneeId] = useState<string | null>(task?.assigneeId ?? null);
   const [repeat, setRepeat] = useState<Repeat>((task?.repeat as Repeat) ?? "daily");
   const [points, setPoints] = useState(task?.points?.toString() ?? "");
-  const [steps, setSteps] = useState((task?.steps ?? []).join("\n"));
+  const [steps, setSteps] = useState<TaskStep[]>(task?.steps ?? []);
   const busy = mutations.create.isPending || mutations.update.isPending;
+
+  const setStep = (index: number, patch: Partial<TaskStep>) =>
+    setSteps((current) => current.map((s, i) => (i === index ? { ...s, ...patch } : s)));
 
   const submit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -190,7 +215,7 @@ function TaskModal({ task, members, onClose }: { task: Task | null; members: Mem
       assigneeId, dueAt: task?.dueAt ?? null,
       repeat: repeat === "" ? null : repeat,
       points: points ? Number(points) : null,
-      steps: steps.split("\n").map((l) => l.trim()).filter(Boolean),
+      steps: steps.filter((s) => s.text.trim()).map((s) => ({ ...s, text: s.text.trim() })),
     };
     const options = { onSuccess: onClose, onError: (err: Error) => showToast(err.message, "error") };
     if (task) mutations.update.mutate({ id: task.id, ...input }, options);
@@ -244,9 +269,41 @@ function TaskModal({ task, members, onClose }: { task: Task | null; members: Mem
           </div>
         </div>
         <div>
-          <label className={labelCls}>Steps (one per line — shows inside the chore)</label>
-          <textarea className={`${inputCls} min-h-20 text-sm`} value={steps} onChange={(e) => setSteps(e.target.value)}
-            placeholder={"vacuum the rug\npick up toys\nfluff the pillows"} />
+          <label className={labelCls}>
+            Steps — the chore finishes when every step is checked. Give a step
+            to a person to make this a family job; give it points to reward
+            whoever does it.
+          </label>
+          <div className="space-y-1.5">
+            {steps.map((step, i) => (
+              <div key={i} className="flex items-center gap-1.5">
+                <input className={`${inputCls} flex-1 py-1.5 text-sm`} placeholder="vacuum the rug"
+                  value={step.text} onChange={(e) => setStep(i, { text: e.target.value })} maxLength={120} />
+                <input className="w-14 rounded-xl border-2 border-line bg-cream px-2 py-1.5 text-sm font-bold"
+                  type="number" min={0} max={1000} placeholder="★"
+                  title="Points for this step"
+                  value={step.points ?? ""}
+                  onChange={(e) => setStep(i, { points: e.target.value ? Number(e.target.value) : null })} />
+                <select className="w-24 rounded-xl border-2 border-line bg-cream px-1.5 py-1.5 text-sm font-bold"
+                  title="Whose step?"
+                  value={step.assigneeId ?? ""}
+                  onChange={(e) => setStep(i, { assigneeId: e.target.value || null })}>
+                  <option value="">anyone</option>
+                  {members.map((m) => (
+                    <option key={m.id} value={m.id}>{m.avatar} {m.name}</option>
+                  ))}
+                </select>
+                <button type="button" aria-label="Remove step" className="rounded-lg p-1 text-ink-soft hover:bg-line"
+                  onClick={() => setSteps((current) => current.filter((_, idx) => idx !== i))}>
+                  <Trash2 size={14} />
+                </button>
+              </div>
+            ))}
+            <button type="button" className={`${ghostBtn} text-sm`}
+              onClick={() => setSteps((current) => [...current, { text: "", assigneeId: null, points: null }])}>
+              <Plus size={14} className="mr-1 inline" /> Add step
+            </button>
+          </div>
         </div>
         <div className="flex items-center justify-between pt-1">
           {task ? (

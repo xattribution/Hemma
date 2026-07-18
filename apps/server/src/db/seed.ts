@@ -96,6 +96,31 @@ addTask("Make your bed", "🛏️", "chore", leo, "daily", null, 5);
 addTask("Water the plants", "🪴", "chore", null, "0", null, 5); // Sundays, up for grabs
 addTask("Sign Mia's permission slip", "✍️", "todo", sam, null, at(1, 8), null);
 
+// Family chore: unassigned as a whole, each step belongs to a kid and
+// carries its own points — it greens up only when every step is done.
+db.prepare(
+  `INSERT INTO tasks (id, household_id, title, notes, icon, kind, assignee_id, repeat, points, steps_json, created_by, created_at)
+   VALUES (?, ?, 'Clean the kitchen', '', '🧽', 'chore', NULL, 'daily', NULL, ?, ?, ?)`,
+).run(uid(), householdId, JSON.stringify([
+  { text: "Sweep the floor", assigneeId: mia, points: 5 },
+  { text: "Load the dishes", assigneeId: leo, points: 5 },
+  { text: "Wipe the counters", assigneeId: null, points: 3 },
+]), jared, now());
+
+// ---- Points: a goal + a little history so the page isn't empty ----
+db.prepare(
+  `INSERT INTO point_goals (id, household_id, title, icon, mode, target, member_ids_json, starts_at, ends_at, repeat, reward, created_at)
+   VALUES (?, ?, 'Movie night fund', '🍿', 'target', 40, NULL, ?, NULL, 'monthly', 'Pick the Friday movie', ?)`,
+).run(uid(), householdId, now() - 3 * 86_400_000, now());
+db.prepare(
+  `INSERT INTO points_ledger (household_id, member_id, delta, reason, source, created_by, created_at)
+   VALUES (?, ?, 8, 'Helped carry groceries', 'manual', ?, ?)`,
+).run(householdId, mia, sam, now() - 86_400_000);
+db.prepare(
+  `INSERT INTO points_ledger (household_id, member_id, delta, reason, source, created_by, created_at)
+   VALUES (?, ?, 6, 'Read to his little cousin', 'manual', ?, ?)`,
+).run(householdId, leo, jared, now() - 2 * 86_400_000);
+
 // ---- Lists ----
 function addList(title: string, icon: string, kind: string, pinned: boolean, needBy: number | null, items: [string, string | null, string | null][]) {
   const id = uid();

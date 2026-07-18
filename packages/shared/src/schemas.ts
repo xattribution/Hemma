@@ -169,6 +169,24 @@ export type EditScope = z.infer<typeof editScopeSchema>;
 
 export const taskKindSchema = z.enum(["chore", "todo"]);
 
+/**
+ * A sub-step of one chore. Steps can carry their own assignee (family/group
+ * chores: "clean the kitchen — Mia: floor, Leo: dishes") and their own
+ * points. Bare strings are accepted everywhere for back-compat and upgraded
+ * to { text } objects.
+ */
+export const taskStepSchema = z.object({
+  text: z.string().trim().min(1).max(120),
+  assigneeId: z.string().nullable().default(null),
+  points: z.number().int().min(0).max(1000).nullable().default(null),
+});
+export type TaskStep = z.infer<typeof taskStepSchema>;
+export const taskStepInputSchema = z
+  .union([z.string().trim().min(1).max(120), taskStepSchema])
+  .transform((step): TaskStep =>
+    typeof step === "string" ? { text: step, assigneeId: null, points: null } : step,
+  );
+
 export const taskInputSchema = z.object({
   title: z.string().trim().min(1).max(120),
   notes: z.string().max(1000).default(""),
@@ -180,12 +198,13 @@ export const taskInputSchema = z.object({
   repeat: z.string().max(40).nullable().default(null),
   points: z.number().int().min(0).max(1000).nullable().default(null),
   /** Sub-steps shown inside the one chore ("vacuum", "fluff pillows", …). */
-  steps: z.array(z.string().trim().min(1).max(120)).max(20).default([]),
+  steps: z.array(taskStepInputSchema).max(20).default([]),
 });
 export type TaskInput = z.infer<typeof taskInputSchema>;
 
 export const taskSchema = taskInputSchema.extend({
   id: z.string(),
+  steps: z.array(taskStepSchema),
   createdBy: z.string().nullable(),
   /** ISO date (YYYY-MM-DD, household tz) this occurrence refers to; null for one-off. */
   occurrenceDate: z.string().nullable(),
@@ -267,6 +286,73 @@ export const auditEntrySchema = z.object({
   createdAt: z.number(),
 });
 export type AuditEntry = z.infer<typeof auditEntrySchema>;
+
+// ---------- Points ----------
+
+/**
+ * Points are a ledger, not a counter: every award/deduction is a row with a
+ * reason, so totals are auditable and reversible. Chore points land ONLY
+ * when the whole task completes (step points go to whoever checked the
+ * step); parents can adjust manually (bonuses / bad behavior).
+ */
+export const pointsEntrySchema = z.object({
+  id: z.number(),
+  memberId: z.string(),
+  delta: z.number().int(),
+  reason: z.string(),
+  source: z.enum(["task", "step", "manual"]),
+  taskId: z.string().nullable(),
+  createdBy: z.string().nullable(),
+  createdAt: z.number(),
+});
+export type PointsEntry = z.infer<typeof pointsEntrySchema>;
+
+export const pointsAdjustSchema = z.object({
+  memberId: z.string(),
+  delta: z.number().int().min(-1000).max(1000).refine((n) => n !== 0, "Zero changes nothing"),
+  reason: z.string().trim().min(1).max(200),
+});
+
+/**
+ * A goal frames a window of the ledger. The primitives are deliberately
+ * few — window + target + participants + mode — so future reward schemes
+ * (allowance, streaks…) can reuse the same plumbing.
+ *  - mode "target": everyone fills their own bar to `target`
+ *  - mode "race":   first participant past `target` wins
+ *  - repeat "monthly": the window resets each calendar month
+ *  - endsAt: optional deadline ("earn 50 by the 30th")
+ */
+export const goalInputSchema = z.object({
+  title: z.string().trim().min(1).max(80),
+  icon: z.string().max(8).default("🏆"),
+  mode: z.enum(["target", "race"]).default("target"),
+  target: z.number().int().min(1).max(100000),
+  /** null = every kid; otherwise explicit member ids (adults allowed too). */
+  memberIds: z.array(z.string()).nullable().default(null),
+  startsAt: z.number().int(),
+  endsAt: z.number().int().nullable().default(null),
+  repeat: z.enum(["none", "monthly"]).default("none"),
+  /** Free-text reward ("movie night", "$10") — display only. */
+  reward: z.string().max(120).default(""),
+});
+export type GoalInput = z.infer<typeof goalInputSchema>;
+
+export const goalSchema = goalInputSchema.extend({ id: z.string(), createdAt: z.number() });
+export type PointGoal = z.infer<typeof goalSchema>;
+
+export interface GoalStanding {
+  memberId: string;
+  earned: number; // within the goal's current window (never below 0 for display)
+  reached: boolean;
+  /** race mode: ms when this member crossed the target (winner = earliest). */
+  reachedAt: number | null;
+}
+
+export interface PointsSummary {
+  totals: { memberId: string; total: number }[];
+  goals: { goal: PointGoal; windowStart: number; windowEnd: number | null; standings: GoalStanding[] }[];
+  recent: PointsEntry[];
+}
 
 // ---------- Dashboard ----------
 

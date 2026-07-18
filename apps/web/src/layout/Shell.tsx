@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { NavLink, Outlet } from "react-router";
-import { CalendarDays, ClipboardList, History, ListChecks, LogOut, Settings, UsersRound } from "lucide-react";
+import { CalendarDays, ClipboardList, History, ListChecks, LogOut, Settings, Star, UsersRound } from "lucide-react";
 import type { Me } from "@coord/shared";
 import { Avatar } from "../components/Avatar";
 import { SwitchPersonModal } from "../components/SwitchPersonModal";
@@ -11,12 +11,13 @@ const ALL_TABS = [
   { to: "/calendar", label: "Calendar", icon: CalendarDays },
   { to: "/chores", label: "Chores", icon: ClipboardList },
   { to: "/lists", label: "Lists", icon: ListChecks },
+  { to: "/points", label: "Points", icon: Star },
   { to: "/history", label: "History", icon: History },
   { to: "/settings", label: "Settings", icon: Settings },
 ];
-// Kids get the essentials: calendar, chores, lists. History and every
-// setting (including their own sign-in) stays parent-controlled.
-const KID_TABS = ALL_TABS.slice(0, 3);
+// Kids get the essentials: calendar, chores, lists, points. History and
+// every setting (including their own sign-in) stays parent-controlled.
+const KID_TABS = ALL_TABS.slice(0, 4);
 
 export function Shell({ me }: { me: Extract<Me, { kind: "member" }> }) {
   const logout = useLogout();

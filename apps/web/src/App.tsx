@@ -14,6 +14,7 @@ import { DashboardPage } from "./features/dashboard/DashboardPage";
 import { HistoryPage } from "./features/history/HistoryPage";
 import { SettingsPage } from "./features/settings/SettingsPage";
 import { KidApp } from "./features/kid/KidApp";
+import { PointsPage } from "./features/points/PointsPage";
 
 export function App() {
   const qc = useQueryClient();
@@ -81,6 +82,7 @@ export function App() {
           <Route path="/calendar/:view/:date" element={<CalendarPage />} />
           <Route path="/chores" element={<TasksPage me={me.data} />} />
           <Route path="/lists" element={<ListsPage me={me.data} />} />
+          <Route path="/points" element={<PointsPage me={me.data} />} />
           {me.data.member.role !== "child" && <Route path="/history" element={<HistoryPage />} />}
           {me.data.member.role !== "child" && <Route path="/settings" element={<SettingsPage me={me.data} />} />}
           <Route path="*" element={<Navigate to="/calendar" replace />} />

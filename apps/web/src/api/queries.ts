@@ -174,6 +174,41 @@ export function useTaskMutations() {
   };
 }
 
+// ---------- Points ----------
+
+export const usePointsSummary = (memberId?: string) =>
+  useQuery({
+    queryKey: ["points", { memberId: memberId ?? "all" }],
+    queryFn: () =>
+      api<import("@coord/shared").PointsSummary>(`/api/points/summary${memberId ? `?memberId=${memberId}` : ""}`),
+  });
+
+export function usePointsMutations() {
+  const qc = useQueryClient();
+  const invalidate = () => void qc.invalidateQueries({ queryKey: ["points"] });
+  return {
+    adjust: useMutation({
+      mutationFn: (args: { memberId: string; delta: number; reason: string }) =>
+        api("/api/points/adjust", { method: "POST", body: args }),
+      onSuccess: invalidate,
+    }),
+    createGoal: useMutation({
+      mutationFn: (input: import("@coord/shared").GoalInput) =>
+        api("/api/points/goals", { method: "POST", body: input }),
+      onSuccess: invalidate,
+    }),
+    updateGoal: useMutation({
+      mutationFn: ({ id, ...patch }: Partial<import("@coord/shared").GoalInput> & { id: string }) =>
+        api(`/api/points/goals/${id}`, { method: "PATCH", body: patch }),
+      onSuccess: invalidate,
+    }),
+    removeGoal: useMutation({
+      mutationFn: (id: string) => api(`/api/points/goals/${id}`, { method: "DELETE" }),
+      onSuccess: invalidate,
+    }),
+  };
+}
+
 // ---------- Checklists ----------
 
 export const useChecklists = () =>

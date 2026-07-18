@@ -218,7 +218,7 @@ server.tool(
 
 server.tool(
   "create_task",
-  "Add a chore or to-do. repeat: 'daily', 'weekdays', comma-separated weekday numbers (0=Sun…6=Sat), or omit for one-time.",
+  "Add a chore or to-do. repeat: 'daily', 'weekdays', comma-separated weekday numbers (0=Sun…6=Sat), or omit for one-time. Steps with their own assignee make it a FAMILY chore ('Mia: floor, Leo: dishes') — it completes only when every step is checked, and step points go to whoever does each step (awarded when the whole chore finishes).",
   {
     title: z.string(),
     icon: z.string().default("⭐").describe("a single emoji"),
@@ -228,14 +228,24 @@ server.tool(
     due_date: z.string().nullable().default(null).describe("YYYY-MM-DD for one-time tasks"),
     due_time: z.string().default("18:00"),
     points: z.number().int().nullable().default(null),
+    steps: z.array(z.object({
+      text: z.string(),
+      assignee_name: z.string().nullable().default(null),
+      points: z.number().int().nullable().default(null),
+    })).default([]),
   },
   async (args) => {
     const assigneeId = args.assignee_name ? (await resolveMember(args.assignee_name)).id : null;
+    const steps = await Promise.all(args.steps.map(async (s) => ({
+      text: s.text,
+      assigneeId: s.assignee_name ? (await resolveMember(s.assignee_name)).id : null,
+      points: s.points,
+    })));
     return ok(await api("/api/tasks", {
       method: "POST",
       body: {
         title: args.title, icon: args.icon, kind: args.kind, assigneeId,
-        repeat: args.repeat, points: args.points,
+        repeat: args.repeat, points: args.points, steps,
         dueAt: args.due_date ? await toMs(args.due_date, args.due_time) : null,
       },
     }));
@@ -257,6 +267,46 @@ server.tool(
   async ({ task_id, to_member_name }) => {
     const toMemberId = to_member_name ? (await resolveMember(to_member_name)).id : null;
     return ok(await api(`/api/tasks/${task_id}/reassign`, { method: "POST", body: { toMemberId } }));
+  },
+);
+
+// ---------- points ----------
+
+server.tool(
+  "get_points",
+  "The family points picture: all-time totals per member, every goal with per-member standings, and the recent ledger (every entry has a reason).",
+  {},
+  async () => ok(await api("/api/points/summary")),
+);
+
+server.tool(
+  "adjust_points",
+  "Give or take points with a reason (negative delta = deduction). The reason shows on the family's Points page — be honest and specific. Deduct only when a parent asks.",
+  { member_name: z.string(), delta: z.number().int(), reason: z.string() },
+  async ({ member_name, delta, reason }) => {
+    const memberId = (await resolveMember(member_name)).id;
+    return ok(await api("/api/points/adjust", { method: "POST", body: { memberId, delta, reason } }));
+  },
+);
+
+server.tool(
+  "create_point_goal",
+  "Set up a reward goal: mode 'target' (everyone fills their own bar) or 'race' (first past the post). repeat 'monthly' resets each month; ends_at (ms) sets a deadline; member_names null = all kids.",
+  {
+    title: z.string(),
+    mode: z.enum(["target", "race"]).default("target"),
+    target: z.number().int().min(1),
+    member_names: z.array(z.string()).nullable().default(null),
+    ends_at: z.number().int().nullable().default(null),
+    repeat: z.enum(["none", "monthly"]).default("none"),
+    reward: z.string().default(""),
+  },
+  async ({ title, mode, target, member_names, ends_at, repeat, reward }) => {
+    const memberIds = member_names ? await Promise.all(member_names.map(async (n) => (await resolveMember(n)).id)) : null;
+    return ok(await api("/api/points/goals", {
+      method: "POST",
+      body: { title, mode, target, memberIds, startsAt: Date.now(), endsAt: ends_at, repeat, reward },
+    }));
   },
 );
 

@@ -9,6 +9,7 @@ export type QueryKeyPattern =
   | "checklists"
   | "members"
   | "federation"
+  | "points"
   | "dashboard"
   | "audit"
   | "me"; // display config changes propagate to signed-in kiosks

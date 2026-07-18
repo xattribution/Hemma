@@ -21,6 +21,7 @@ stands on.
   - v6 tasks.steps_json
   - v7 step_checks (per-occurrence step progress)
   - v8 members.ui_level (`little` | `teen` | NULL)
+  - v9 points: step_checks.checked_by, points_ledger, point_goals
 - Soft deletes (`deleted_at`) on events/tasks/checklists/members so history
   can still reference them.
 - `uid()` = randomUUID, `now()` = Date.now (UTC ms everywhere).
@@ -62,7 +63,7 @@ The plugin host bridges bus events → WS `invalidate` broadcasts.
 ## WS protocol (`shared/ws-protocol.ts`, `core/ws.ts`)
 
 Notify-only. `QueryKeyPattern` = `events | tasks | checklists | members |
-federation | dashboard | audit | me`. Client invalidates
+federation | points | dashboard | audit | me`. Client invalidates
 `queryKey: [key]` on receipt. Socket auth = session cookie at upgrade.
 When adding a feature with its own query key, add it to the union — the
 type keeps server and client honest.
@@ -98,3 +99,6 @@ route, all modules via `registerModules`, `/api/plugins` toggles, then
 static PWA serving with SPA fallback. `trustProxy: true` — required for
 correct `req.protocol` behind Nginx Proxy Manager (federation reply URLs).
 Tests call `buildApp` with `:memory:` and use `app.inject`.
+`GET /api/backup` (core.backup module) streams `db.serialize()` — the
+whole household as one file — to parents/agents; see the README's
+three-tier section for the NAS/cron backup patterns.

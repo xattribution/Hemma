@@ -59,12 +59,16 @@ parent-level permissions.
 - GET /api/tasks?date=YYYY-MM-DD → tasks as they stand that day
   (recurring chores included only on days they repeat; completed flag per
   day; steps + stepsDone indices per occurrence)
-- POST /api/tasks — { "title": "Clean the living room", "icon": "🧹",
+- POST /api/tasks — { "title": "Clean the kitchen", "icon": "🧽",
   "kind": "chore", "assigneeId": "<memberId|null>",
   "repeat": "daily"|"weekdays"|"0,3,5"|null, "dueAt": <ms|null>,
-  "points": 5, "steps": ["vacuum", "pick up toys"] }
+  "points": 5,
+  "steps": [ { "text": "Sweep the floor", "assigneeId": "<memberId|null>", "points": 5 }, "bare strings ok too" ] }
   repeat weekday numbers: 0=Sunday … 6=Saturday. null repeat = one-time.
-  steps are sub-steps INSIDE the one chore (guidance, not assignments).
+  Steps are sub-steps INSIDE the one chore. A step with its own assigneeId
+  makes it a FAMILY chore ("Mia: floor, Leo: dishes") — the chore only
+  completes when every step is checked, kids can only check their own
+  steps, and step points go to whoever did the step.
 - PATCH /api/tasks/:id — partial body of the same fields
 - POST /api/tasks/:id/complete — { "occurrenceDate": "YYYY-MM-DD" } for
   recurring chores (toggles; required for recurring, null for one-time).
@@ -120,6 +124,25 @@ on the other side).
   POST /api/federation/shared/:peerId/:remoteId/toggle { "itemId": ... }
 "Send Jonathan's family the Costco list" = find the peer by name, find the
 list, POST share. Never share anything not explicitly asked for.
+
+## Points
+
+Points are a ledger — every entry has a reason. Chore/step points land
+automatically when the whole task completes (never before), and reverse if
+it's reopened. Parents (and you) can adjust manually.
+
+- GET /api/points/summary?memberId=<optional> → { totals (all-time per
+  member), goals (each with its window + per-member standings:
+  earned/reached/reachedAt), recent (last 50 ledger entries) }
+- POST /api/points/adjust — { "memberId": ..., "delta": 5 or -5,
+  "reason": "Helped grandma" } — ALWAYS give an honest reason; it shows on
+  the family's Points page. Deduct only when a parent asks.
+- POST /api/points/goals — { "title": "Movie night fund", "mode":
+  "target"|"race", "target": 50, "memberIds": null (= all kids) | [ids],
+  "startsAt": <ms>, "endsAt": <ms|null>, "repeat": "none"|"monthly",
+  "reward": "Pick the Friday movie" }
+  mode target = everyone fills their own bar; race = first past the post.
+- PATCH /api/points/goals/:id, DELETE /api/points/goals/:id
 
 ## Meal planning
 

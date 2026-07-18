@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { taskInputSchema, type Task } from "@coord/shared";
+import { taskInputSchema, type Task, type TaskStep } from "@coord/shared";
 import type { EventBus } from "@coord/plugin-sdk";
 import type { CoreModule } from "../core/plugin-host.js";
 import { requireAccess, requireActor } from "../core/auth.js";
@@ -24,6 +24,51 @@ interface TaskRow {
   points: number | null;
   steps_json: string | null;
   created_by: string | null;
+}
+
+/** Steps stored as bare strings (pre-v9) upgrade to objects on read. */
+export function stepsOf(row: Pick<TaskRow, "steps_json">): TaskStep[] {
+  if (!row.steps_json) return [];
+  return (JSON.parse(row.steps_json) as (string | TaskStep)[]).map((step) =>
+    typeof step === "string" ? { text: step, assigneeId: null, points: null } : step,
+  );
+}
+
+/**
+ * Chore points land in the ledger ONLY when the whole task completes.
+ * Step points go to the step's assignee (family chores) or whoever checked
+ * it; task-level points go to the task's assignee (or the completer).
+ * Uncompleting reverses exactly what completing wrote.
+ */
+function awardPoints(
+  db: Db, householdId: string, row: TaskRow, key: string,
+  actor: { memberId: string | null; name: string },
+) {
+  const steps = stepsOf(row);
+  const checks = db
+    .prepare("SELECT step_index, checked_by FROM step_checks WHERE task_id = ? AND occurrence_date = ?")
+    .all(row.id, key) as { step_index: number; checked_by: string | null }[];
+  const checkerOf = new Map(checks.map((c) => [c.step_index, c.checked_by]));
+  const insert = db.prepare(
+    `INSERT INTO points_ledger (household_id, member_id, delta, reason, source, task_id, occurrence_date, created_by, created_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+  );
+  steps.forEach((step, index) => {
+    if (!step.points) return;
+    const recipient = step.assigneeId ?? checkerOf.get(index) ?? row.assignee_id ?? actor.memberId;
+    if (recipient) {
+      insert.run(householdId, recipient, step.points, `${step.text} — ${row.title}`, "step", row.id, key, actor.memberId, now());
+    }
+  });
+  if (row.points) {
+    const recipient = row.assignee_id ?? actor.memberId;
+    if (recipient) insert.run(householdId, recipient, row.points, row.title, "task", row.id, key, actor.memberId, now());
+  }
+}
+
+function reversePoints(db: Db, taskId: string, key: string) {
+  db.prepare("DELETE FROM points_ledger WHERE task_id = ? AND occurrence_date = ? AND source IN ('task','step')")
+    .run(taskId, key);
 }
 
 /** Does a repeat pattern ("daily" | "weekdays" | "0,3,5") land on this weekday (0=Sun)? */
@@ -66,7 +111,7 @@ export function listTasksFor(db: Db, householdId: string, isoDate: string, tz: s
       dueAt: row.due_at,
       repeat: row.repeat,
       points: row.points,
-      steps: row.steps_json ? (JSON.parse(row.steps_json) as string[]) : [],
+      steps: stepsOf(row),
       stepsDone,
       createdBy: row.created_by,
       occurrenceDate: recurring ? isoDate : null,
@@ -95,17 +140,22 @@ export function completeTask(
   const existing = db
     .prepare("SELECT 1 FROM task_completions WHERE task_id = ? AND occurrence_date = ?")
     .get(taskId, key);
-  const steps = row.steps_json ? (JSON.parse(row.steps_json) as string[]) : [];
+  const steps = stepsOf(row);
   if (existing) {
     db.prepare("DELETE FROM task_completions WHERE task_id = ? AND occurrence_date = ?").run(taskId, key);
     db.prepare("DELETE FROM step_checks WHERE task_id = ? AND occurrence_date = ?").run(taskId, key);
+    reversePoints(db, taskId, key);
     recordAudit(db, householdId, actor, "task", taskId, "uncomplete", `${actor.name} unchecked "${row.title}"`);
   } else {
     db.prepare(
       "INSERT INTO task_completions (task_id, occurrence_date, completed_by, completed_at) VALUES (?, ?, ?, ?)",
     ).run(taskId, key, actor.memberId, now());
-    const insertStep = db.prepare("INSERT OR IGNORE INTO step_checks (task_id, occurrence_date, step_index) VALUES (?, ?, ?)");
-    steps.forEach((_, index) => insertStep.run(taskId, key, index));
+    // OR IGNORE keeps the real checker on steps already ticked individually.
+    const insertStep = db.prepare(
+      "INSERT OR IGNORE INTO step_checks (task_id, occurrence_date, step_index, checked_by) VALUES (?, ?, ?, ?)",
+    );
+    steps.forEach((_, index) => insertStep.run(taskId, key, index, actor.memberId));
+    awardPoints(db, householdId, row, key, actor);
     recordAudit(db, householdId, actor, "task", taskId, "complete", `${actor.name} completed "${row.title}" 🎉`);
   }
   bus.emit("task.completed", { taskId, title: row.title, occurrenceDate: key || null, actor });
@@ -211,16 +261,22 @@ export const tasksModule: CoreModule = {
         reply.code(404).send({ error: "Task not found" });
         return;
       }
-      const steps = row.steps_json ? (JSON.parse(row.steps_json) as string[]) : [];
+      const steps = stepsOf(row);
       if (Number.isNaN(stepIndex) || stepIndex < 0 || stepIndex >= steps.length) {
         reply.code(400).send({ error: "No such step" });
+        return;
+      }
+      // Family chores: a kid can only tick their own (or unassigned) steps.
+      const step = steps[stepIndex]!;
+      if (access.role === "child" && step.assigneeId && step.assigneeId !== access.memberId) {
+        reply.code(403).send({ error: "That step is someone else's job" });
         return;
       }
       const key = row.repeat !== null ? (body.occurrenceDate ?? "") : "";
       const done = db.prepare("SELECT 1 FROM step_checks WHERE task_id = ? AND occurrence_date = ? AND step_index = ?")
         .get(id, key, stepIndex);
       if (done) db.prepare("DELETE FROM step_checks WHERE task_id = ? AND occurrence_date = ? AND step_index = ?").run(id, key, stepIndex);
-      else db.prepare("INSERT INTO step_checks (task_id, occurrence_date, step_index) VALUES (?, ?, ?)").run(id, key, stepIndex);
+      else db.prepare("INSERT INTO step_checks (task_id, occurrence_date, step_index, checked_by) VALUES (?, ?, ?, ?)").run(id, key, stepIndex, access.memberId);
 
       const doneCount = (db.prepare("SELECT COUNT(*) AS c FROM step_checks WHERE task_id = ? AND occurrence_date = ?")
         .get(id, key) as { c: number }).c;
@@ -229,6 +285,7 @@ export const tasksModule: CoreModule = {
         completeTask(db, bus, access.householdId, actorOf(access), id, key || null);
       } else if (doneCount < steps.length && completed) {
         db.prepare("DELETE FROM task_completions WHERE task_id = ? AND occurrence_date = ?").run(id, key);
+        reversePoints(db, id, key); // reopened — the award un-happens
         bus.emit("task.completed", { taskId: id, title: row.title, occurrenceDate: key || null, actor: actorOf(access) });
       } else {
         bus.emit("task.completed", { taskId: id, title: row.title, occurrenceDate: key || null, actor: actorOf(access) });

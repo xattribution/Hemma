@@ -18,8 +18,15 @@ screen on iPhone and Android alike and runs full-screen on a kitchen display.
   categories, DST-safe timezone handling
 - **Family & roles** — parents sign in with a password, kids with a big-button
   4-digit PIN from an avatar picker; parents manage, kids do
-- **Chores & to-dos** — daily/weekday/weekend repeats, points, tap-to-complete,
-  and one-tap **swap** ("you take dishes, I'll walk the dog")
+- **Chores & to-dos** — daily/weekday/weekend repeats, tap-to-complete,
+  one-tap **swap** ("you take dishes, I'll walk the dog"), and **family
+  chores**: one job, per-person steps ("Clean the kitchen — Mia: floor,
+  Leo: dishes") that only greens up when every step is checked
+- **Points** — an auditable ledger: per-step and per-chore points that land
+  only when the whole job is done, parent bonuses & deductions (with
+  reasons), and parent-defined **goals** — fillable milestone bars,
+  first-past-the-post races, deadlines, monthly resets, optional rewards —
+  on a Points page for everyone (giant "My stars" tab in the little-kid app)
 - **Lists** — three flavors: **running** (groceries — add, check off, "clear
   done", repeat), **dated** (need-by deadline, surfaces in that day's
   summary), and **event-linked** (a packing list that rides along with the
@@ -47,6 +54,46 @@ screen on iPhone and Android alike and runs full-screen on a kitchen display.
   in under a second
 - **Plugin architecture** — the seams for what's next (see roadmap) are built
   and already used by the core features themselves
+
+## The three pieces of Coord
+
+Coord is deliberately split into three separate things. Know which one
+you're touching:
+
+```
+┌─────────────────────────┐        ┌──────────────────────────┐
+│  1. HOME SERVER          │  E2E   │  1. ANOTHER FAMILY'S      │
+│  (your box, Docker)      │◄──────►│     HOME SERVER           │
+│  ALL your data lives     │ sealed │                           │
+│  here: coord.db          │ blobs  └──────────────────────────┘
+└───────────▲─────────────┘    ▲
+            │                  │ (only when families can't
+            │ LAN or HTTPS     │  reach each other directly)
+            │                  ▼
+┌───────────┴─────────────┐   ┌──────────────────────────┐
+│  3. UI CLIENTS           │   │  2. RELAY (web server)    │
+│  browser / PWA / .exe /  │   │  a small VPS; RAM-only,   │
+│  .apk — a pane of glass, │   │  zero-knowledge, stores   │
+│  stores NOTHING          │   │  and logs NOTHING         │
+└─────────────────────────┘   └──────────────────────────┘
+```
+
+**1. The home server** is the product: one Docker container (or `pnpm dev`)
+on a box the family owns. Every event, chore, list, point, member, setting
+and photo credential lives in **one SQLite file** on that box and nowhere
+else. → [setup / update / backup](#1-the-home-server)
+
+**2. The relay web server** exists only for **federation between families
+that can't reach each other directly**. It is optional, stateless and
+zero-knowledge: RAM-only mailboxes of end-to-end-encrypted blobs, no
+accounts, no logs, no database. One relay can serve many families; local
+pairing never touches it. → [setup / update](#2-the-relay-federation-web-server)
+
+**3. The UI layer** is a pane of glass. The web app is served by the home
+server itself (so it's always in sync); the native shells (.exe, .deb,
+.AppImage, .dmg, .apk — iOS via installed PWA for now) are thin windows
+that remember your server's address and render the same UI. Clients hold
+no data — sign in and everything is there. → [setup / update](#3-the-ui-clients-pane-of-glass)
 
 ## Get the code
 
@@ -84,15 +131,21 @@ pnpm test        # Vitest: recurrence/DST, scheduler idempotency, API flows
 pnpm typecheck
 ```
 
-## Production (Docker)
+## 1. The home server
+
+The family's system of record. Runs as one Docker container on any Linux
+box/NAS/mini-PC (or as `pnpm dev` while developing).
+
+**Set up**
 
 ```bash
 docker compose up -d --build
 ```
 
-One container: the app (API + web UI) on port **49733**, SQLite in the
-`coord-data` volume. Browse `http://<server-ip>:49733` to run the setup
-wizard.
+One container: API + web UI on port **49733**, everything stored in the
+`coord-data` volume as a single SQLite file (`coord.db`). Browse
+`http://<server-ip>:49733` and the setup wizard creates your household and
+parent account; add everyone else in **Settings → Family**.
 
 **HTTPS (required for home-screen install & push):** put your reverse proxy
 in front — Nginx Proxy Manager, Caddy, Traefik, whatever you already run —
@@ -102,31 +155,88 @@ host → forward to the host IP, port 49733, toggle WebSockets Support, request
 a certificate, Force SSL. If idle wall displays ever stall, add
 `proxy_read_timeout 3600s;` in the Advanced tab.
 
-**Relay (federation rendezvous):** see [apps/relay](apps/relay/README.md) —
-`cd deploy/relay && docker compose up -d --build` publishes it on port
-8790 for your reverse proxy (or `--profile caddy` for bundled auto-HTTPS).
+**Update**
 
-**Backup:** copy the `coord-data` volume (a single SQLite file + WAL). That's
-the whole family database.
+```bash
+git pull
+docker compose up -d --build     # data survives — it's in the volume
+```
 
-### First run
+Database migrations run automatically on boot. Clients need nothing:
+browsers/PWAs/native shells load the UI from the server, so updating the
+server updates every screen in the house.
 
-Visit your Coord URL — a setup wizard creates your household and your parent
-account. Add everyone else in **Settings → Family**.
+**Backup — your data is ONE file**
 
-### Phones & tablets
+Data *and* configuration (members, tokens, federation keys, plugin
+settings) are all inside `coord.db`. Three ways to keep it safe:
 
-- **iPhone/iPad:** Safari → Share → **Add to Home Screen**. Then open the app
-  and enable reminders in Settings (iOS only allows push for installed PWAs).
-- **Android:** Chrome prompts to install, or ⋮ → Add to Home screen.
-- **Native apps** (Windows .exe, Linux .deb/.AppImage, macOS .dmg, Android
-  .apk): thin shells that remember your server address and open the same app —
-  built from [apps/shell](docs/apps.md) via `git tag vX.Y.Z && git push --tags`.
+1. **From any device** — Settings → **Backup → Download backup** saves a
+   snapshot right onto the phone/laptop you're holding (parents only,
+   logged in History).
+2. **Onto a NAS** — point the data volume at a NAS-backed path in
+   `docker-compose.yml`:
+   ```yaml
+   volumes:
+     - /mnt/nas/coord-data:/data     # instead of the named volume
+   ```
+   or keep the named volume and pull a nightly snapshot over the API
+   (create a token under Settings → AI & API access):
+   ```bash
+   # host crontab — rolling 7-day snapshots onto the NAS at 3:30 every night
+   30 3 * * * curl -s -H "Authorization: Bearer <api-token>" \
+     http://localhost:49733/api/backup -o /mnt/nas/coord/coord-$(date +\%a).db
+   ```
+3. **Restore** — stop the server, place the backup file back as
+   `/data/coord.db` (delete stale `coord.db-wal`/`-shm`), start the server.
+
+## 2. The relay (federation web server)
+
+**Only needed if** your family pairs with another family that can't reach
+your home server directly. It's a zero-knowledge rendezvous: RAM-only
+mailboxes of sealed, end-to-end-encrypted blobs. No accounts, no database,
+no logs — nothing to back up, nothing to leak. One relay serves many
+families; each family opts in under **Settings → Family connections** and
+can point at any relay URL (default `coord.tinbadger.com`).
+
+**Set up** (on a small VPS, [full guide](apps/relay/README.md)):
+
+```bash
+git clone -b claude/family-coordination-calendar-bs4zqo https://github.com/xattribution/coord.git
+cd coord/deploy/relay
+docker compose up -d --build          # relay on port 8790
+# then proxy https://your-relay-domain → http://<vps>:8790
+# (no proxy on the box? RELAY_DOMAIN=your-domain docker compose --profile caddy up -d --build)
+```
+
+**Update**
+
+```bash
+git pull && docker compose up -d --build   # stateless: safe at any moment
+```
+
+## 3. The UI clients (pane of glass)
+
+All clients are windows onto the home server — they store nothing.
+
+- **Web app** — just browse to the server. It's a PWA:
+  **iPhone/iPad:** Safari → Share → **Add to Home Screen** (this is the iOS
+  app path for now — required for push). **Android:** Chrome prompts to
+  install, or ⋮ → Add to Home screen.
+- **Native apps** — Windows `.exe`, Linux `.deb`/`.AppImage`, macOS `.dmg`,
+  Android `.apk`: thin shells that ask for your server address once, then
+  open the same UI ([install guide](docs/apps.md)). Build a release with
+  `git tag vX.Y.Z && git push --tags` — GitHub Actions attaches all
+  installers to the release. A dedicated iOS app is future work; the
+  installed PWA covers iPhones today.
+- **Updating clients:** browsers/PWAs update automatically from the server.
+  Native shells almost never need updating (the UI they show *is* the
+  server's) — only grab a new release when the shell itself changes.
 - **Displays:** Settings → Displays → create a display, then open its link
   (or scan its QR code) once on the tablet. It stays signed in, updates
   live, and refreshes itself nightly. Pick per display what it shows —
-  dashboard cards or a fullscreen calendar. Recommended: Fully Kiosk Browser
-  (Android) or Guided Access (iPad) to keep the screen on.
+  dashboard cards, fullscreen calendar, lists, or an Immich photo frame.
+  Recommended: Fully Kiosk Browser (Android) / Guided Access (iPad).
 - **AI assistant:** Settings → AI & API access → create a token, then hook up
   the [MCP server](apps/mcp/README.md) or point any agent at the REST API
   (instructions at `/llms.txt`).

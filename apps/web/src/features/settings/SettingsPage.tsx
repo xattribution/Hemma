@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Bell, Home, Pencil, Plus, Puzzle, Trash2, Users } from "lucide-react";
+import { Bell, DatabaseBackup, Home, Pencil, Plus, Puzzle, Trash2, Users } from "lucide-react";
 import { useQueryClient } from "@tanstack/react-query";
 import type { Grant, Me, Member, Role } from "@coord/shared";
 import { AVATARS, GRANTS, MEMBER_COLORS, PATTERN_ANIMALS, can } from "@coord/shared";
@@ -28,6 +28,7 @@ export function SettingsPage({ me }: { me: Extract<Me, { kind: "member" }> }) {
       {isParent && <PhotosSection />}
       {isParent && <AiAccessSection />}
       {isParent && <PluginsSection />}
+      {isParent && <BackupSection />}
       <section className="rounded-card bg-card p-4 shadow-card text-sm font-semibold text-ink-soft">
         Coord v0.1 — your family's data lives on your own server. 💛
       </section>
@@ -283,6 +284,25 @@ function NotificationsSection() {
       {state === "on" && (
         <button type="button" className={ghostBtn} onClick={() => void disable()}>Turn off</button>
       )}
+    </section>
+  );
+}
+
+// ---------- Backup ----------
+
+function BackupSection() {
+  return (
+    <section className="rounded-card bg-card p-4 shadow-card">
+      <h3 className="mb-2 flex items-center gap-2 font-extrabold"><DatabaseBackup size={18} /> Backup</h3>
+      <p className="mb-3 text-sm font-semibold text-ink-soft">
+        Everything — calendar, chores, lists, points, members, settings — is one
+        file. Download it to this device (or save it onto your NAS) and you can
+        restore the whole household from it. Restore: stop the server, put the
+        file back as <code className="rounded bg-cream px-1">coord.db</code> in the data folder, start it again.
+      </p>
+      <a href="/api/backup" download className={`${primaryBtn} inline-block`}>
+        Download backup
+      </a>
     </section>
   );
 }

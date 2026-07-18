@@ -282,7 +282,11 @@ function DisplayCards({ config }: { config: DisplayConfig }) {
                 <div className="space-y-1">
                   {memberTasks.map((task) => (
                     <button key={task.id} type="button"
-                      onClick={() => void ensure().then((ok) => ok && tasks.complete.mutate({ id: task.id, occurrenceDate: task.occurrenceDate }))}
+                      onClick={() => {
+                        // Multi-step chores complete through their steps only.
+                        if (task.steps.length) return;
+                        void ensure().then((ok) => ok && tasks.complete.mutate({ id: task.id, occurrenceDate: task.occurrenceDate }));
+                      }}
                       className={`flex w-full items-center gap-2 rounded-xl border-2 px-3 py-2 text-left transition active:scale-[0.98] ${
                         task.completed ? "border-leaf/40 bg-leaf/10 opacity-60" : "border-line bg-cream"
                       }`}>
@@ -306,7 +310,8 @@ function DisplayCards({ config }: { config: DisplayConfig }) {
                                   className={`rounded-full border px-2 py-0.5 text-[11px] font-bold ${
                                     stepDone ? "border-leaf/50 bg-leaf/15 text-ink-soft line-through" : "border-line bg-card"
                                   }`}>
-                                  {step}
+                                  {step.text}
+                                  {step.points ? <span className="ml-1 text-sun">★{step.points}</span> : null}
                                 </button>
                               );
                             })}

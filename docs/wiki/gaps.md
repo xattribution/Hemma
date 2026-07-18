@@ -16,7 +16,7 @@ start here (and confirm priorities with Jared first).
 | Google / Outlook 2-way sync | Not started (Phase 5) | External calendar APIs; per-member account linking |
 | Drawable calendar overlay | Not started (Phase 6) | `calendar.day-cell.overlay` plugin slot is the reserved seam |
 | Home Assistant integration | Not started (Phase 6) | Bus → MQTT relay plugin |
-| Reward modes (competition / goal / allowance) | Points exist; no modes, tally page, or redemption | User: optional feature, default stays "completion & satisfaction" |
+| Points redemption / allowance payout | Goals + ledger + races/deadlines/monthly resets shipped; no "spend points" flow | Ledger supports it: negative `manual` entries; needs UI concept |
 | Server-in-a-box packaging (installer / desktop-bundled server / tablet-as-server APK) | Client shells shipped; server tiers pending | `docs/packaging-plan.md` |
 
 ## Partial implementations (works, but bounded)
@@ -26,6 +26,8 @@ start here (and confirm priorities with Jared first).
 - **`event.copy` is one-shot** — no continuing cross-family event sync.
 - **`todo` task kind** exists in the schema; UI presents everything as
   chores.
+- **Backup is one-way** — download endpoint + NAS patterns shipped; no
+  in-app restore/upload (restore = file swap, documented in the README).
 - **Week/day calendar views** are functional but plain (no drag/resize).
 - **API tokens are all-or-nothing** parent-level; no scoped/read-only
   tokens.
