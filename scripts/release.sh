@@ -35,6 +35,16 @@ done
 gh auth status >/dev/null 2>&1 || die "gh isn't logged in — run: gh auth login"
 [ -z "$(git status --porcelain)" ] || die "working tree isn't clean — commit or stash first"
 git rev-parse "$TAG" >/dev/null 2>&1 && die "tag $TAG already exists"
+# don't start a docker build the disk can't hold (build cache grows every
+# release — reclaim with: docker system prune -af && docker builder prune -af)
+DOCKER_ROOT="$(docker info --format '{{.DockerRootDir}}' 2>/dev/null || echo /)"
+AVAIL_KB="$(df -Pk "$DOCKER_ROOT" 2>/dev/null | awk 'NR==2 {print $4}')"
+if [ -n "${AVAIL_KB:-}" ] && [ "$AVAIL_KB" -lt $((6 * 1024 * 1024)) ]; then
+  die "only $((AVAIL_KB / 1024 / 1024)) GB free on $DOCKER_ROOT — docker builds need ~6 GB headroom. Free space first:
+  docker system prune -af          # old images, stopped containers, dangling layers (volumes are SAFE)
+  docker builder prune -af         # the build cache (the usual disk hog)
+  NEVER use 'docker system prune --volumes' — your family's data lives in a docker volume."
+fi
 # don't start a 10-minute build that can't be pushed at the end
 BRANCH="$(git rev-parse --abbrev-ref HEAD)"
 git fetch -q origin "$BRANCH" 2>/dev/null || true
