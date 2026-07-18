@@ -15,6 +15,8 @@ import { DayModal } from "../calendar/DayModal";
 import { viewRange } from "../calendar/dates";
 import { ElevationProvider, useElevation } from "./elevation";
 import { FullscreenButton } from "../../components/FullscreenButton";
+import { useLogout } from "../../api/queries";
+import { LogOut } from "lucide-react";
 
 /**
  * The always-on display view (kitchen, living room, bedroom…). What it shows
@@ -49,6 +51,7 @@ export function DashboardPage() {
             <p className="font-semibold text-ink-soft">{format(now, "EEEE, MMMM d")}</p>
           </div>
           <div className="flex items-start gap-3 text-right">
+            {me.data.kind === "device" && <ExitDisplayButton label={me.data.label} />}
             <FullscreenButton />
             <div>
             <p className="text-4xl font-extrabold tabular-nums sm:text-5xl">{format(now, "h:mm")}</p>
@@ -125,6 +128,39 @@ function DisplayPhotos() {
         <img key={current} src={`/api/p/immich/asset/${current}`} alt=""
           className="animate-pop h-full w-full object-contain" />
       )}
+    </div>
+  );
+}
+
+/**
+ * The way out of kiosk mode. Opening a display link turns the whole browser
+ * into that display (a near-permanent session, by design) — this is the
+ * explicit exit for when it was YOUR laptop, not the kitchen tablet.
+ */
+function ExitDisplayButton({ label }: { label: string }) {
+  const logout = useLogout();
+  const [confirming, setConfirming] = useState(false);
+  if (!confirming) {
+    return (
+      <button type="button" onClick={() => setConfirming(true)}
+        title={`This browser is signed in as the display "${label}"`}
+        className="rounded-xl bg-card p-2 text-ink-soft shadow-card transition hover:text-ink active:scale-95">
+        <LogOut size={18} />
+      </button>
+    );
+  }
+  return (
+    <div className="flex items-center gap-2 rounded-xl bg-card px-3 py-1.5 text-left shadow-card">
+      <span className="text-xs font-bold text-ink-soft">Stop being “{label}”?</span>
+      <button type="button"
+        className="rounded-lg bg-coral px-2.5 py-1 text-xs font-extrabold text-white active:scale-95"
+        onClick={() => logout.mutate(undefined, { onSuccess: () => location.replace("/") })}>
+        Sign out
+      </button>
+      <button type="button" className="rounded-lg px-2 py-1 text-xs font-bold text-ink-soft hover:bg-line"
+        onClick={() => setConfirming(false)}>
+        Stay
+      </button>
     </div>
   );
 }
