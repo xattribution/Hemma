@@ -35,6 +35,13 @@ done
 gh auth status >/dev/null 2>&1 || die "gh isn't logged in — run: gh auth login"
 [ -z "$(git status --porcelain)" ] || die "working tree isn't clean — commit or stash first"
 git rev-parse "$TAG" >/dev/null 2>&1 && die "tag $TAG already exists"
+# don't start a 10-minute build that can't be pushed at the end
+BRANCH="$(git rev-parse --abbrev-ref HEAD)"
+git fetch -q origin "$BRANCH" 2>/dev/null || true
+if git rev-parse -q --verify "origin/$BRANCH" >/dev/null 2>&1 \
+   && [ "$(git rev-list --count "HEAD..origin/$BRANCH")" != 0 ]; then
+  die "your branch is behind origin/$BRANCH — run: git pull, then re-run"
+fi
 
 say "installing deps + running the release gate (tests, typecheck)"
 pnpm install --frozen-lockfile
