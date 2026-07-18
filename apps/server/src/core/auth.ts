@@ -6,6 +6,7 @@ import type { Db } from "./db.js";
 import { now } from "./db.js";
 import { getHousehold } from "./household.js";
 import { config } from "../config.js";
+import { INTERNAL_TOKEN } from "./internal.js";
 
 export const SESSION_COOKIE = "coord_session";
 /** How long a display acts as a verified member before dropping back to read-only. */
@@ -171,6 +172,9 @@ export function setSessionCookie(reply: FastifyReply, token: string) {
 
 /** Resolve the caller: bearer API token (AI/automation) first, then cookie. */
 export function sessionOf(db: Db, req: FastifyRequest): SessionInfo | null {
+  if (req.headers["x-coord-internal"] === INTERNAL_TOKEN) {
+    return { kind: "agent", label: "Coord" }; // in-process service call
+  }
   const header = req.headers.authorization;
   if (header?.startsWith("Bearer ")) {
     const row = db

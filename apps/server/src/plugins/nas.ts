@@ -48,6 +48,7 @@ function listPhotos(photosRoot: string): string[] {
     }
   };
   walk(photosRoot, 0);
+  found.sort(); // stable order so "in order" playback is deterministic
   return found;
 }
 
@@ -118,7 +119,11 @@ export const nasPlugin: CoreModule = {
 
     app.get("/api/p/nas/random", (req, reply) => {
       if (!requireAccess(db, req, reply)) return;
-      const query = parse(z.object({ count: z.coerce.number().int().min(1).max(100).default(20) }), req.query, reply);
+      const query = parse(z.object({
+        count: z.coerce.number().int().min(1).max(100).default(20),
+        order: z.enum(["shuffle", "seq"]).default("shuffle"),
+        offset: z.coerce.number().int().min(0).default(0),
+      }), req.query, reply);
       if (!query) return;
       if (!root()) {
         reply.code(400).send({ error: "The NAS folder isn't set up yet — add it in Settings" });
@@ -129,8 +134,13 @@ export const nasPlugin: CoreModule = {
         reply.code(404).send({ error: `No photos yet — drop some into ${photosRoot()}` });
         return;
       }
-      const shuffled = [...all].sort(() => Math.random() - 0.5).slice(0, query.count);
-      return { assets: shuffled.map((rel) => ({ id: Buffer.from(rel).toString("base64url") })) };
+      const picked = query.order === "seq"
+        ? Array.from({ length: Math.min(query.count, all.length) }, (_, i) => all[(query.offset + i) % all.length]!)
+        : [...all].sort(() => Math.random() - 0.5).slice(0, query.count);
+      return {
+        assets: picked.map((rel) => ({ id: Buffer.from(rel).toString("base64url") })),
+        total: all.length,
+      };
     });
 
     app.get("/api/p/nas/asset/:id", (req, reply) => {

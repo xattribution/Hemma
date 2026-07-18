@@ -144,6 +144,24 @@ it's reopened. Parents (and you) can adjust manually.
   mode target = everyone fills their own bar; race = first past the post.
 - PATCH /api/points/goals/:id, DELETE /api/points/goals/:id
 
+## Photos & screens
+
+Slideshows run on wall displays and in the app; every screen reports what
+it's showing.
+
+- GET /api/photos/current → { screens: [{ screen: "Kitchen", kind:
+  "device"|"member", assetId, assetUrl, secondsAgo }] } — what's on each
+  screen right now ("what's the picture on the kitchen display?")
+- POST /api/photos/share { "assetId": ... } → { url } — mints a PUBLIC
+  link (no sign-in, expires in 7 days). Use it to send a photo anywhere:
+  email it, text it, or pass it on.
+- POST /api/federation/peers/:peerId/share-photo { "url": ... } — drop
+  that link to a connected family (they get a toast + a History entry).
+"Send the picture on the kitchen display to Jonathan's family" =
+current → find screen "Kitchen" → share its assetId → share-photo to the
+peer. For someone outside Coord (grandma's phone), mint the link and
+deliver it however you deliver messages.
+
 ## Meal planning
 
 Lists with kind "meal" are meal plans. Adding an item with "alsoGrocery":

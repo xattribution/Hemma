@@ -88,4 +88,35 @@ describe("unified photo source", () => {
     const res = await app.inject({ method: "POST", url: "/api/photos/source", payload: { source: "immich" } });
     expect(res.statusCode).toBe(401);
   });
+
+  it("sequential order pages through the library deterministically", async () => {
+    const a = (await app.inject({ method: "GET", url: "/api/p/nas/random?count=1&order=seq&offset=0", headers: { cookie } })).json();
+    const b = (await app.inject({ method: "GET", url: "/api/p/nas/random?count=1&order=seq&offset=0", headers: { cookie } })).json();
+    expect(a.assets[0].id).toBe(b.assets[0].id); // same offset → same photo
+  });
+
+  it("screens report what they're showing; agents can read it", async () => {
+    const random = (await app.inject({ method: "GET", url: "/api/p/nas/random?count=1", headers: { cookie } })).json();
+    const assetId = random.assets[0].id as string;
+    await app.inject({ method: "POST", url: "/api/photos/current", headers: { cookie }, payload: { assetId } });
+    const current = (await app.inject({ method: "GET", url: "/api/photos/current", headers: { cookie } })).json();
+    expect(current.screens).toHaveLength(1);
+    expect(current.screens[0].assetId).toBe(assetId);
+    expect(current.screens[0].kind).toBe("member");
+  });
+
+  it("mints a public share link that streams without any sign-in", async () => {
+    const random = (await app.inject({ method: "GET", url: "/api/p/nas/random?count=1", headers: { cookie } })).json();
+    const share = (await app.inject({
+      method: "POST", url: "/api/photos/share", headers: { cookie },
+      payload: { assetId: random.assets[0].id },
+    })).json();
+    expect(share.url).toContain("/shared/photo/");
+    const token = share.url.split("/shared/photo/")[1];
+    const open = await app.inject({ method: "GET", url: `/shared/photo/${token}` }); // NO cookie
+    expect(open.statusCode).toBe(200);
+    expect(open.headers["content-type"]).toBe("image/png");
+    const expired = await app.inject({ method: "GET", url: "/shared/photo/not-a-real-token" });
+    expect(expired.statusCode).toBe(404);
+  });
 });

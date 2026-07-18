@@ -12,7 +12,24 @@ Three layers:
 3. **Consumers** — the `photos` display layout (DisplayPhotos) and the
    in-app slideshow/screensaver (`features/photos/Slideshow.tsx`): avatar
    menu → Slideshow → start now / start once in N minutes / screensaver
-   after N idle minutes (per-device, localStorage `coord.slideshow.idleMinutes`).
+   after N idle minutes. Per-device prefs (localStorage): idleMinutes,
+   speedSec (3-600), order shuffle|seq ("in order" follows folder/album
+   order; pure-random sources fall back to shuffle). Shared engine
+   `usePhotoRotation` + `PhotoStage`: near-transparent ‹ › edge arrows,
+   tap photo = exit (overlay) / share (displays), subtle share button.
+
+## The conversational layer
+
+- Every rotation POSTs `/api/photos/current`; `GET /api/photos/current`
+  answers "what's on the kitchen display?" (screen name, kind, assetId,
+  fresh <3 min). Exposed to agents via /llms.txt + MCP `get_screen_photos`.
+- `POST /api/photos/share {assetId}` mints a PUBLIC 7-day link
+  (`/shared/photo/<128-bit token>`, RAM-only — dies at restart); streamed
+  by an internal self-call using the per-boot `x-coord-internal` service
+  token (core/internal.ts). UI share panel: QR + copy + native share +
+  "send to a family" (federation `photo.link` message → toast + History
+  on the other side). MCP `share_photo` composes mint+send.
+- Voice pick of the share target: future (Whisper phase).
 
 ## NAS folder plugin
 

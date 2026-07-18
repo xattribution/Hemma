@@ -310,6 +310,31 @@ server.tool(
   },
 );
 
+// ---------- photos & screens ----------
+
+server.tool(
+  "get_screen_photos",
+  "What every screen is showing right now: [{screen: 'Kitchen', kind: 'device'|'member', assetId, assetUrl, secondsAgo}]. Use to answer 'what's the picture on the kitchen display?' or to grab the assetId for sharing.",
+  {},
+  async () => ok(await api("/api/photos/current")),
+);
+
+server.tool(
+  "share_photo",
+  "Mint a PUBLIC 7-day link for a photo (asset_id from get_screen_photos), and optionally send it to a connected family (they get a toast + History entry). For people outside Coord (e.g. 'send it to my mom'), mint the link and deliver it through whatever channel you have.",
+  { asset_id: z.string(), family_name: z.string().nullable().default(null) },
+  async ({ asset_id, family_name }) => {
+    const share = (await api("/api/photos/share", { method: "POST", body: { assetId: asset_id } })) as { url: string };
+    if (family_name) {
+      const fed = (await api("/api/federation")) as { peers: { id: string; name: string; status: string }[] };
+      const peer = fed.peers.find((p) => p.status === "active" && p.name.toLowerCase().includes(family_name.toLowerCase()));
+      if (!peer) throw new Error(`No connected family matching "${family_name}"`);
+      await api(`/api/federation/peers/${peer.id}/share-photo`, { method: "POST", body: { url: share.url } });
+    }
+    return ok(share);
+  },
+);
+
 // ---------- lists ----------
 
 server.tool(

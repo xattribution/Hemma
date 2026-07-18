@@ -48,6 +48,7 @@ type FedMessage =
   | { type: "list.revoke"; remoteId: string }
   | { type: "list.op"; remoteId: string; itemId: string; op: "toggle" }
   | { type: "event.copy"; event: Record<string, unknown> }
+  | { type: "photo.link"; url: string }
   | { type: "peer.remove" };
 
 export const federationModule: CoreModule = {
@@ -148,6 +149,17 @@ export const federationModule: CoreModule = {
         case "event.copy": {
           const input = message.event as Parameters<typeof createEvent>[4];
           createEvent(db, bus, getHousehold(db)!.id, { memberId: null, name: peer.name }, input);
+          break;
+        }
+        case "photo.link": {
+          // A photo shared from the other family: lands in History and pops
+          // a toast on every open screen (the link is a public share link).
+          recordAudit(db, getHousehold(db)!.id, { memberId: null, name: peer.name }, "photo", peer.id, "create",
+            `${peer.name} shared a photo 📷 ${message.url}`);
+          broadcast({
+            type: "reminder",
+            payload: { title: `📷 ${peer.name} shared a photo`, body: message.url, entityType: "event", entityId: "" },
+          });
           break;
         }
         case "peer.remove": {
@@ -550,6 +562,24 @@ export const federationModule: CoreModule = {
       lastSent.delete(`${id}:${checklistId}`);
       const peer = db.prepare("SELECT * FROM peers WHERE id = ?").get(id) as PeerRow | undefined;
       if (peer) await sendToPeer(peer, { type: "list.revoke", remoteId: checklistId });
+      return { ok: true };
+    });
+
+    // Send a (public, expiring) photo link to another family.
+    app.post("/api/federation/peers/:id/share-photo", async (req, reply) => {
+      const access = requireActor(db, req, reply, "checklist.check"); // any family member may share a photo
+      if (!access) return;
+      const body = parse(z.object({ url: z.string().url().max(300) }), req.body, reply);
+      if (!body) return;
+      const { id } = req.params as { id: string };
+      const peer = db.prepare("SELECT * FROM peers WHERE id = ? AND status = 'active'").get(id) as PeerRow | undefined;
+      if (!peer) {
+        reply.code(404).send({ error: "Family not found" });
+        return;
+      }
+      await sendToPeer(peer, { type: "photo.link", url: body.url });
+      recordAudit(db, access.householdId, actorOf(access), "photo", id, "update",
+        `${access.name} shared a photo with ${peer.name}`);
       return { ok: true };
     });
 

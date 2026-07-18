@@ -17,6 +17,7 @@ import { ElevationProvider, useElevation } from "./elevation";
 import { FullscreenButton } from "../../components/FullscreenButton";
 import { useLogout } from "../../api/queries";
 import { LogOut } from "lucide-react";
+import { PhotoStage, usePhotoRotation } from "../photos/Slideshow";
 
 /**
  * The always-on display view (kitchen, living room, bedroom…). What it shows
@@ -72,62 +73,16 @@ export function DashboardPage() {
 }
 
 /**
- * Photo-frame layout: a slow slideshow from the family's Immich server
- * (Settings → Photos). Refetches a fresh random batch when it runs out.
+ * Photo-frame layout: the shared rotation engine on the wall. Reports what
+ * it's showing (so "the picture on the kitchen display" means something to
+ * a connected AI); edge arrows skip, tapping the photo opens the share
+ * panel — a wall display should never accidentally exit.
  */
 function DisplayPhotos() {
-  const [batch, setBatch] = useState<string[]>([]);
-  const [index, setIndex] = useState(0);
-  const [error, setError] = useState<string | null>(null);
-  const batchRef = useRef<string[]>([]); // the interval callback needs the live batch
-
-  useEffect(() => {
-    let cancelled = false;
-    const load = () =>
-      fetch("/api/photos/random?count=30")
-        .then(async (res) => {
-          if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error ?? "Photos unavailable");
-          return res.json() as Promise<{ assets: { id: string }[] }>;
-        })
-        .then((data) => {
-          if (cancelled) return;
-          batchRef.current = data.assets.map((a) => a.id);
-          setBatch(batchRef.current);
-          setIndex(0);
-          setError(null);
-        })
-        .catch((err) => !cancelled && setError((err as Error).message));
-    void load();
-    const rotate = setInterval(() => {
-      const current = batchRef.current;
-      if (!current.length) {
-        void load(); // configuration may have been fixed since the last failure
-        return;
-      }
-      setIndex((i) => {
-        if (i + 1 >= current.length) void load(); // fresh randoms for the next lap
-        return (i + 1) % current.length;
-      });
-    }, 20_000);
-    return () => { cancelled = true; clearInterval(rotate); };
-  }, []);
-
-  if (error) {
-    return (
-      <div className="flex h-[70dvh] flex-col items-center justify-center gap-3 rounded-card bg-card text-center shadow-card">
-        <span className="text-6xl">🖼️</span>
-        <p className="max-w-md px-6 text-lg font-bold text-ink-soft">{error}</p>
-        <p className="text-sm font-semibold text-ink-soft">Pick a photo source under Settings → Photos.</p>
-      </div>
-    );
-  }
-  const current = batch[index];
+  const rotation = usePhotoRotation({ speedSec: 20, order: "shuffle" });
   return (
     <div className="relative h-[78dvh] overflow-hidden rounded-card bg-black shadow-card">
-      {current && (
-        <img key={current} src={`/api/photos/asset/${current}`} alt=""
-          className="animate-pop h-full w-full object-contain" />
-      )}
+      <PhotoStage {...rotation} />
     </div>
   );
 }

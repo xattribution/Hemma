@@ -129,7 +129,13 @@ export const immichPlugin: CoreModule = {
         reply.code(400).send({ error: NOT_CONFIGURED });
         return;
       }
-      const query = parse(z.object({ count: z.coerce.number().int().min(1).max(100).default(20) }), req.query, reply);
+      const query = parse(z.object({
+        count: z.coerce.number().int().min(1).max(100).default(20),
+        // "in order" works when an album is chosen (albums have an order);
+        // server-wide random has none, so seq quietly falls back to shuffle.
+        order: z.enum(["shuffle", "seq"]).default("shuffle"),
+        offset: z.coerce.number().int().min(0).default(0),
+      }), req.query, reply);
       if (!query) return;
       const { albumId } = config();
 
@@ -139,8 +145,12 @@ export const immichPlugin: CoreModule = {
         if (res) {
           const album = (await res.json()) as { assets?: { id: string; type: string }[] };
           ids = (album.assets ?? []).filter((a) => a.type === "IMAGE").map((a) => a.id);
-          ids.sort(() => Math.random() - 0.5);
-          ids = ids.slice(0, query.count);
+          if (query.order === "seq" && ids.length) {
+            ids = Array.from({ length: Math.min(query.count, ids.length) }, (_, i) => ids[(query.offset + i) % ids.length]!);
+          } else {
+            ids.sort(() => Math.random() - 0.5);
+            ids = ids.slice(0, query.count);
+          }
         }
       } else {
         const res = await firstOk([
